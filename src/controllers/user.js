@@ -32,7 +32,6 @@ const login = TryCatch(async (req, res, next) => {
 
   const user = await User.findOne({ email }).select("+password");
   if (!user) return next(new ErrorHandler("Invalid Username or Password", 404));
-
   const isMatch = await compare(password, user.password);
 
   if (!isMatch)

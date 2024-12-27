@@ -1,6 +1,8 @@
 import { GAME_TOKEN } from "../constants/keys.js";
 import { User } from "../models/user.js";
+import { ErrorHandler } from "../utils/utility-class.js";
 import { TryCatch } from "./error.js";
+import jwt from "jsonwebtoken";
 
 const isAuthenticated = TryCatch(async (req, res, next) => {
   const token = req.cookies[GAME_TOKEN];
@@ -8,8 +10,7 @@ const isAuthenticated = TryCatch(async (req, res, next) => {
     return next(new ErrorHandler("Please login to access this route", 401));
 
   const decodedData = jwt.verify(token, process.env.JWT_SECRET);
-
-  const user = await User.findOne({ email: decodedData.email });
+  const user = await User.findOne({ _id: decodedData._id });
   if (!user)
     return next(new ErrorHandler("Not authorized, user not found", 404));
 
