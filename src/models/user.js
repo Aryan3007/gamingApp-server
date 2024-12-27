@@ -5,16 +5,41 @@ const schema = new Schema(
   {
     name: {
       type: String,
-      required: true,
+      required: [true, "Please enter a name"],
+    },
+    currency: {
+      type: String,
+      required: [true, "Please enter a currency"],
+    },
+    role: {
+      type: String,
+      required: [true, "Please enter a role"],
+      enum: ["admin", "user"],
+      default: "user",
+    },
+    gender: {
+      type: String,
+      enum: ["male", "female", "other"],
+      required: [true, "Please enter gender"],
+    },
+    amount: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    status: {
+      type: String,
+      enum: ["active", "banned"],
+      default: "active",
     },
     email: {
       type: String,
-      required: true,
+      required: [true, "Please enter a email address"],
       unique: true,
     },
     password: {
       type: String,
-      required: true,
+      required: [true, "Please enter a password"],
       select: false,
     },
   },
