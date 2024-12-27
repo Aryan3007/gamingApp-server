@@ -15,12 +15,12 @@ app.get("/status/deposit", depositStatus);
 
 app.get("/status/wthdraw", withdrawStatus);
 
-app.post("/payment", adminOnly, paymentRequest);
+app.post("/request/payment", adminOnly, paymentRequest);
 
 app.post("/paymentstatus", adminOnly, changePaymentStatus);
 
 app.post("/withdrawstatus", adminOnly, changeWithdrawStatus);
 
-app.post("/withdraw", withdrawRequest);
+app.post("/request/withdraw", withdrawRequest);
 
 export default app;

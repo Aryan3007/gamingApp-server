@@ -7,6 +7,7 @@ import { errorMiddleware } from "./middlewares/error.js";
 import { connectDB } from "./utils/features.js";
 
 import userRoute from "./routes/user.js";
+import paymentRoute from "./routes/payment.js";
 
 config({
   path: "./.env",
@@ -24,6 +25,7 @@ app.use(cookieParser());
 app.use(cors(corsOption));
 
 app.use("/api/v1/user", userRoute);
+app.use("/api/v1/payment", paymentRoute);
 
 app.get("/", (req, res) => {
   res.send("Server is running");
