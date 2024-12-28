@@ -11,8 +11,27 @@ const newUser = TryCatch(async (req, res, next) => {
   if (!name || !email || !password || !currency || !role || !gender || !amount)
     return next(new ErrorHandler("Please enter all fields", 400));
 
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    return next(new ErrorHandler("Invalid email format", 400));
+  }
+
+  if (password.length < 6) {
+    return next(
+      new ErrorHandler("Password must be at least 6 characters", 400)
+    );
+  }
+
+  const validRoles = ["user", "admin"];
+  if (!validRoles.includes(role)) {
+    return next(new ErrorHandler("Invalid role", 400));
+  }
+
   let user = await User.findOne({ email });
-  if (user) return next(new ErrorHandler("Email is already registered", 400));
+  if (user)
+    return next(
+      new ErrorHandler("An account with this email already exists", 400)
+    );
 
   user = await User.create({
     name,
@@ -30,8 +49,18 @@ const newUser = TryCatch(async (req, res, next) => {
 const login = TryCatch(async (req, res, next) => {
   const { email, password } = req.body;
 
+  if (!email || !password) {
+    return next(new ErrorHandler("Email and password are required", 400));
+  }
+
   const user = await User.findOne({ email }).select("+password");
   if (!user) return next(new ErrorHandler("Invalid Username or Password", 404));
+
+  if (user.status === "banned")
+    return next(
+      new ErrorHandler("Your account is banned. Please contact support.", 403)
+    );
+
   const isMatch = await compare(password, user.password);
 
   if (!isMatch)
@@ -51,7 +80,14 @@ const getMyProfile = TryCatch(async (req, res, next) => {
 });
 
 const getAllUsers = TryCatch(async (req, res, next) => {
-  const users = await User.find();
+  const { status, role, page = 1, limit = 10 } = req.query;
+  const query = {};
+  if (status) query.status = status;
+  if (role) query.role = role;
+
+  const users = await User.find(query)
+    .skip((page - 1) * limit)
+    .limit(parseInt(limit));
 
   return res.status(200).json({
     success: true,
@@ -63,12 +99,22 @@ const addAmount = TryCatch(async (req, res, next) => {
   const id = req.params.id;
   const { amount } = req.body;
 
-  if (!amount) return next(new ErrorHandler("Please enter coins", 400));
+  if (!amount || isNaN(amount) || amount <= 0)
+    return next(new ErrorHandler("Please enter a valid amount", 400));
+
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    return next(new ErrorHandler("Invalid User ID", 400));
+  }
+
   const user = await User.findById(id);
-  if (!user) return next(new ErrorHandler("Invalid ID", 400));
+  if (!user) return next(new ErrorHandler("User Not Found", 404));
 
   user.amount += amount;
-  await user.save();
+  try {
+    await user.save();
+  } catch (err) {
+    return next(new ErrorHandler("Error saving user data", 500));
+  }
 
   return res.status(200).json({
     success: true,
@@ -81,10 +127,22 @@ const userBanned = TryCatch(async (req, res, next) => {
   const id = req.params.id;
   const { status } = req.body;
 
+  if (!status) return next(new ErrorHandler("Please provide status", 400));
+
+  const validStatuses = ["active", "banned"];
+  if (!validStatuses.includes(status)) {
+    return next(new ErrorHandler("Invalid status value", 400));
+  }
+
   const user = await User.findById(id);
   if (!user) return next(new ErrorHandler("Invalid ID", 400));
-  user.banned = status;
-  await user.save();
+
+  user.status = status;
+  try {
+    await user.save();
+  } catch (err) {
+    return next(new ErrorHandler("Error saving user data", 500));
+  }
 
   return res.status(200).json({
     success: true,
@@ -96,7 +154,13 @@ const userBanned = TryCatch(async (req, res, next) => {
 const logout = TryCatch(async (req, res) => {
   return res
     .status(200)
-    .cookie(GAME_TOKEN, "", { ...cookieOptions, maxAge: 0 })
+    .cookie(GAME_TOKEN, "", {
+      ...cookieOptions,
+      maxAge: 0,
+      path: "/",
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+    })
     .json({
       success: true,
       message: "Logged out Successfully",

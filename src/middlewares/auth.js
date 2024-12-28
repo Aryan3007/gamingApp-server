@@ -9,21 +9,26 @@ const isAuthenticated = TryCatch(async (req, res, next) => {
   if (!token)
     return next(new ErrorHandler("Please login to access this route", 401));
 
-  const decodedData = jwt.verify(token, process.env.JWT_SECRET);
-  const user = await User.findOne({ _id: decodedData._id });
-  if (!user)
-    return next(new ErrorHandler("Not authorized, user not found", 404));
+  try {
+    const decodedData = jwt.verify(token, process.env.JWT_SECRET);
+    const user = await User.findOne({ _id: decodedData._id });
+    if (!user)
+      return next(new ErrorHandler("Not authorized, user not found", 404));
 
-  req.user = decodedData._id;
+    if (user.status === "banned")
+      return next(
+        new ErrorHandler("Your account is banned. Please contact support.", 400)
+      );
 
-  next();
+    req.user = decodedData._id;
+    next();
+  } catch (error) {
+    return next(new ErrorHandler("Invalid or expired token", 401));
+  }
 });
 
 const adminOnly = TryCatch(async (req, res, next) => {
-  const { id } = req.query;
-  if (!id) return next(new ErrorHandler("Login First!", 401));
-
-  const user = await User.findById(id);
+  const user = await User.findById(req.user);
   if (!user) return next(new ErrorHandler("User Not Found", 404));
 
   if (user.role !== "admin")

@@ -2,7 +2,7 @@ import mongoose, { Schema, model } from "mongoose";
 
 const schema = new Schema(
   {
-    userID: {
+    userId: {
       type: String,
       required: true,
       ref: "User",
@@ -34,7 +34,7 @@ const schema = new Schema(
     },
     status: {
       type: String,
-      enum: ["approved", "not approved", "pending"],
+      enum: ["approved", "rejected", "pending"],
       default: "pending",
     },
   },

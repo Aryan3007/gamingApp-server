@@ -13,14 +13,14 @@ const app = express.Router();
 
 app.get("/status/deposit", depositStatus);
 
-app.get("/status/wthdraw", withdrawStatus);
+app.get("/status/withdraw", withdrawStatus);
 
 app.post("/request/payment", adminOnly, paymentRequest);
+
+app.post("/request/withdraw", withdrawRequest);
 
 app.post("/paymentstatus", adminOnly, changePaymentStatus);
 
 app.post("/withdrawstatus", adminOnly, changeWithdrawStatus);
-
-app.post("/request/withdraw", withdrawRequest);
 
 export default app;

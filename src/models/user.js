@@ -50,8 +50,8 @@ const schema = new Schema(
 
 schema.pre("save", async function (next) {
   if (!this.isModified("password")) return next();
-
   this.password = await hash(this.password, 10);
+  next();
 });
 
 export const User = mongoose.models.User || model("User", schema);

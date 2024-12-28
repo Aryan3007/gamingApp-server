@@ -23,7 +23,7 @@ app.get("/logout", logout);
 
 app.get("/allusers", adminOnly, getAllUsers);
 
-app.post("/userstatus", adminOnly, userBanned);
+app.post("/userstatus/:id", adminOnly, userBanned);
 
 app.put("/addamount/:id", adminOnly, addAmount);
 
