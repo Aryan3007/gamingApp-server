@@ -1,5 +1,5 @@
 import express from "express";
-import { adminOnly } from "../middlewares/auth.js";
+import { adminOnly, isAuthenticated } from "../middlewares/auth.js";
 import {
   changePaymentStatus,
   changeWithdrawStatus,
@@ -10,6 +10,8 @@ import {
 } from "../controllers/payment.js";
 
 const app = express.Router();
+
+app.use(isAuthenticated);
 
 app.get("/status/deposit", depositStatus);
 
