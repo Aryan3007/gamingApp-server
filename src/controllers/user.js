@@ -4,6 +4,7 @@ import { TryCatch } from "../middlewares/error.js";
 import { User } from "../models/user.js";
 import { cookieOptions, sendToken } from "../utils/features.js";
 import { ErrorHandler } from "../utils/utility-class.js";
+import mongoose from "mongoose";
 
 const newUser = TryCatch(async (req, res, next) => {
   const { name, email, password, currency, role, gender, amount } = req.body;
@@ -118,7 +119,7 @@ const addAmount = TryCatch(async (req, res, next) => {
 
   return res.status(200).json({
     success: true,
-    message: "Amount added successfully",
+    message: `${amount} Amount added successfully`,
     user,
   });
 });
@@ -146,7 +147,7 @@ const userBanned = TryCatch(async (req, res, next) => {
 
   return res.status(200).json({
     success: true,
-    message: "User banned successfully",
+    message: `User ${status} successfully`,
     user,
   });
 });

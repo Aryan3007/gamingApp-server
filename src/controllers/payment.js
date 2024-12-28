@@ -6,17 +6,38 @@ import { ErrorHandler } from "../utils/utility-class.js";
 
 const depositStatus = TryCatch(async (req, res, next) => {
   const { userId } = req.query;
+  const { user } = req;
+
   if (!userId) {
     return next(new ErrorHandler("User ID is required", 400));
   }
 
-  const user = await User.findById(userId);
-  if (!user) return next(new ErrorHandler("User Not Found", 404));
+  if (user.role === "admin") {
+    const depositHistory = await PaymentHistory.find({ userId });
+
+    const message =
+      depositHistory.length > 0
+        ? "Fetched deposit history successfully"
+        : "No deposit history found";
+
+    return res.status(200).json({
+      success: true,
+      message,
+      depositHistory,
+    });
+  }
+
+  if (user._id.toString() !== userId) {
+    return next(
+      new ErrorHandler("You can only access your own deposit history", 403)
+    );
+  }
 
   const depositHistory = await PaymentHistory.find({ userId });
+
   const message =
     depositHistory.length > 0
-      ? "Fetched deposit history successfully"
+      ? "Fetched your deposit history successfully"
       : "No deposit history found";
 
   return res.status(200).json({
@@ -28,12 +49,32 @@ const depositStatus = TryCatch(async (req, res, next) => {
 
 const withdrawStatus = TryCatch(async (req, res, next) => {
   const { userId } = req.query;
+  const { user } = req;
+
   if (!userId) {
     return next(new ErrorHandler("User ID is required", 400));
   }
 
-  const user = await User.findById(userId);
-  if (!user) return next(new ErrorHandler("User Not Found", 404));
+  if (user.role === "admin") {
+    const withdrawHistory = await WithdrawHistory.find({ userId });
+
+    const message =
+      withdrawHistory.length > 0
+        ? "Fetched withdraw history successfully"
+        : "No withdraw history found";
+
+    return res.status(200).json({
+      success: true,
+      message,
+      withdrawHistory,
+    });
+  }
+
+  if (user._id.toString() !== userId) {
+    return next(
+      new ErrorHandler("You can only access your own withdraw history", 403)
+    );
+  }
 
   const withdrawHistory = await WithdrawHistory.find({ userId });
   const message =
