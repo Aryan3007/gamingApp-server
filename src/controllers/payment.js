@@ -6,10 +6,14 @@ import { ErrorHandler } from "../utils/utility-class.js";
 
 const depositStatus = TryCatch(async (req, res, next) => {
   const { userId } = req.query;
-  const { user } = req;
 
   if (!userId) {
     return next(new ErrorHandler("User ID is required", 400));
+  }
+
+  const user = await User.findById(req.user);
+  if (!user) {
+    return next(new ErrorHandler("User not found", 404));
   }
 
   if (user.role === "admin") {
@@ -49,7 +53,11 @@ const depositStatus = TryCatch(async (req, res, next) => {
 
 const withdrawStatus = TryCatch(async (req, res, next) => {
   const { userId } = req.query;
-  const { user } = req;
+
+  const user = await User.findById(req.user);
+  if (!user) {
+    return next(new ErrorHandler("User not found", 404));
+  }
 
   if (!userId) {
     return next(new ErrorHandler("User ID is required", 400));
