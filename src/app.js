@@ -15,6 +15,7 @@ config({
 
 const PORT = process.env.PORT || 3000;
 const MONGO_URI = process.env.MONGO_URI || "";
+const NODE_ENV = process.env.NODE_ENV || "development";
 
 connectDB(MONGO_URI);
 
@@ -34,5 +35,5 @@ app.get("/", (req, res) => {
 app.use(errorMiddleware);
 
 app.listen(PORT, () => {
-  console.log(`Server is working on port ${PORT}`);
+  console.log(`Server is working on port ${PORT} in ${NODE_ENV} mode`);
 });
