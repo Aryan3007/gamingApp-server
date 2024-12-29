@@ -12,10 +12,11 @@ import { adminOnly, isAuthenticated } from "../middlewares/auth.js";
 
 const app = express.Router();
 
-app.post("/new", adminOnly, newUser);
 app.post("/login", login);
 
 app.use(isAuthenticated);
+
+app.post("/new", adminOnly, newUser);
 
 app.get("/me", getMyProfile);
 

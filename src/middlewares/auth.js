@@ -28,6 +28,7 @@ const isAuthenticated = TryCatch(async (req, res, next) => {
 });
 
 const adminOnly = TryCatch(async (req, res, next) => {
+  console.log(req.user);
   const user = await User.findById(req.user);
   if (!user) return next(new ErrorHandler("User Not Found", 404));
 
