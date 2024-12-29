@@ -15,7 +15,7 @@ config({
 
 const PORT = process.env.PORT || 3000;
 const MONGO_URI = process.env.MONGO_URI || "";
-const NODE_ENV = process.env.NODE_ENV || "development";
+const NODE_ENV = process.env.NODE_ENV.trim() || "PRODUCTION";
 
 connectDB(MONGO_URI);
 
@@ -37,3 +37,5 @@ app.use(errorMiddleware);
 app.listen(PORT, () => {
   console.log(`Server is working on port ${PORT} in ${NODE_ENV} mode`);
 });
+
+export { NODE_ENV };

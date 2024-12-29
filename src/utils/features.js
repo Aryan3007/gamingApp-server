@@ -6,7 +6,7 @@ const cookieOptions = {
   maxAge: 15 * 24 * 60 * 60 * 1000,
   sameSite: "none",
   httpOnly: true,
-  secure: process.env.NODE_ENV === "production",
+  secure: process.env.NODE_ENV === "PRODUCTION",
 };
 
 const connectDB = (uri) => {
@@ -29,7 +29,7 @@ const connectDB = (uri) => {
 };
 
 const sendToken = (res, user, code, message) => {
-  const key = GAME_TOKEN;
+  const key = "GAME_TOKEN";
   const token = jwt.sign({ _id: user._id }, process.env.JWT_SECRET);
 
   return res.status(code).cookie(key, token, cookieOptions).json({
