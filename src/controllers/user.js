@@ -24,7 +24,7 @@ const newUser = TryCatch(async (req, res, next) => {
   }
 
   const validRoles = ["user", "admin"];
-  if (!validRoles.includes(role)) {
+  if (!validRoles.includes(role.toLowerCase())) {
     return next(new ErrorHandler("Invalid role", 400));
   }
 
@@ -37,11 +37,11 @@ const newUser = TryCatch(async (req, res, next) => {
   user = await User.create({
     name,
     email,
-    gender,
+    gender: gender.toLowerCase(),
     amount,
     password,
-    currency,
-    role,
+    currency: currency.toLowerCase(),
+    role: role.toLowerCase(),
   });
 
   sendToken(res, user, 201, "User created successfully");
@@ -83,8 +83,8 @@ const getMyProfile = TryCatch(async (req, res, next) => {
 const getAllUsers = TryCatch(async (req, res, next) => {
   const { status, role, page = 1, limit = 10 } = req.query;
   const query = {};
-  if (status) query.status = status;
-  if (role) query.role = role;
+  if (status) query.status = status.toLowerCase();
+  if (role) query.role = role.toLowerCase();
 
   const users = await User.find(query)
     .skip((page - 1) * limit)
@@ -131,14 +131,14 @@ const userBanned = TryCatch(async (req, res, next) => {
   if (!status) return next(new ErrorHandler("Please provide status", 400));
 
   const validStatuses = ["active", "banned"];
-  if (!validStatuses.includes(status)) {
+  if (!validStatuses.includes(status.toLowerCase())) {
     return next(new ErrorHandler("Invalid status value", 400));
   }
 
   const user = await User.findById(id);
   if (!user) return next(new ErrorHandler("Invalid ID", 400));
 
-  user.status = status;
+  user.status = status.toLowerCase();
   try {
     await user.save();
   } catch (err) {
