@@ -5,9 +5,12 @@ import { TryCatch } from "./error.js";
 import jwt from "jsonwebtoken";
 
 const isAuthenticated = TryCatch(async (req, res, next) => {
-  const token = req.cookies[GAME_TOKEN];
-  if (!token)
-    return next(new ErrorHandler("Please login to access this route", 401));
+  const authHeader = req.headers.authorization;
+  if (!authHeader) return next(new ErrorHandler("No token provided", 401));
+  const token = authHeader.split(" ")[1];
+
+  // const token = req.cookies[GAME_TOKEN];
+  if (!token) return next(new ErrorHandler("Invalid token format", 401));
 
   try {
     const decodedData = jwt.verify(token, process.env.JWT_SECRET);
@@ -23,12 +26,18 @@ const isAuthenticated = TryCatch(async (req, res, next) => {
     req.user = decodedData._id;
     next();
   } catch (error) {
-    return next(new ErrorHandler("Invalid or expired token", 401));
+    if (error.name === "JsonWebTokenError") {
+      return next(new ErrorHandler("Invalid token", 401));
+    } else if (error.name === "TokenExpiredError") {
+      return next(new ErrorHandler("Token has expired", 401));
+    }
+    return next(new ErrorHandler("Authentication failed", 500));
+    // return next(new ErrorHandler("Invalid or expired token", 401));
   }
 });
 
 const adminOnly = TryCatch(async (req, res, next) => {
-  console.log(req.user);
+  // console.log(req.user);
   const user = await User.findById(req.user);
   if (!user) return next(new ErrorHandler("User Not Found", 404));
 
