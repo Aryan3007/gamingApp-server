@@ -81,7 +81,7 @@ const getMyProfile = TryCatch(async (req, res, next) => {
 });
 
 const getAllUsers = TryCatch(async (req, res, next) => {
-  const { status, role, page = 1, limit = 10 } = req.query;
+  const { status, role, page = 1, limit = 9 } = req.query;
   const query = {};
   if (status) query.status = status.toLowerCase();
   if (role) query.role = role.toLowerCase();
@@ -137,6 +137,11 @@ const userBanned = TryCatch(async (req, res, next) => {
 
   const user = await User.findById(id);
   if (!user) return next(new ErrorHandler("Invalid ID", 400));
+
+  if (user.role === "admin")
+    return next(
+      new ErrorHandler("You are not allowed to perform this operation", 400)
+    );
 
   user.status = status.toLowerCase();
   try {
