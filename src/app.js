@@ -19,6 +19,9 @@ config({
 const PORT = process.env.PORT || 3000;
 const MONGO_URI = process.env.MONGO_URI || "";
 const NODE_ENV = process.env.NODE_ENV.trim() || "PRODUCTION";
+const API_BASE_URL = process.env.API_BASE_URL || "https://api.aiodds.com/v1";
+const API_USER = process.env.API_USER || "";
+const API_SECRET = process.env.API_SECRET || "";
 
 connectDB(MONGO_URI);
 
@@ -53,4 +56,4 @@ app.listen(PORT, () => {
   console.log(`Server is working on port ${PORT} in ${NODE_ENV} mode`);
 });
 
-export { NODE_ENV };
+export { NODE_ENV, API_BASE_URL, API_SECRET, API_USER };

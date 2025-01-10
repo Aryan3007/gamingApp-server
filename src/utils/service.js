@@ -1,8 +1,5 @@
 import axios from "axios";
-
-const API_BASE_URL = process.env.API_BASE_URL || "https://api.aiodds.com/v1";
-const API_USER = process.env.API_USER || "";
-const API_SECRET = process.env.API_SECRET || "";
+import { API_BASE_URL, API_SECRET, API_USER } from "../../src/app.js";
 
 let liveMatches = [];
 let scores = {};
@@ -16,7 +13,7 @@ const fetchLiveMatches = async () => {
     const response = await axios.get(
       `${API_BASE_URL}/match/list?user=${API_USER}&secret=${API_SECRET}&sport_id=5&status_id=3`
     );
-    liveMatches = response.data.list;
+    liveMatches = response.data.data.list;
     console.log(liveMatches);
   } catch (error) {
     console.error("Error fetching live matches:", error.message);
