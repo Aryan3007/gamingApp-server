@@ -2,9 +2,12 @@ import cookieParser from "cookie-parser";
 import cors from "cors";
 import { config } from "dotenv";
 import express from "express";
+import http from "http";
+import { Server } from "socket.io";
 import { corsOption } from "./constants/config.js";
 import { errorMiddleware } from "./middlewares/error.js";
 import { connectDB } from "./utils/features.js";
+import { fetchDataPeriodically } from "./utils/service.js";
 
 import userRoute from "./routes/user.js";
 import paymentRoute from "./routes/payment.js";
@@ -20,6 +23,8 @@ const NODE_ENV = process.env.NODE_ENV.trim() || "PRODUCTION";
 connectDB(MONGO_URI);
 
 const app = express();
+const server = http.createServer(app);
+const io = new Server(server, { cors: { origin: "*" } });
 
 app.use(express.json());
 app.use(cookieParser());
@@ -31,6 +36,16 @@ app.use("/api/v1/payment", paymentRoute);
 app.get("/", (req, res) => {
   res.send("Server is running");
 });
+
+io.on("connection", (socket) => {
+  console.log("Client connected:", socket.id);
+
+  socket.on("disconnect", () => {
+    console.log("Client disconnected:", socket.id);
+  });
+});
+
+fetchDataPeriodically(io);
 
 app.use(errorMiddleware);
 

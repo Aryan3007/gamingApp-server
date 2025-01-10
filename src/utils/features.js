@@ -1,5 +1,4 @@
 import mongoose from "mongoose";
-import { GAME_TOKEN } from "../constants/keys.js";
 import jwt from "jsonwebtoken";
 
 const cookieOptions = {
