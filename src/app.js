@@ -7,7 +7,7 @@ import { Server } from "socket.io";
 import { corsOption } from "./constants/config.js";
 import { errorMiddleware } from "./middlewares/error.js";
 import { connectDB } from "./utils/features.js";
-import { fetchDataPeriodically } from "./utils/service.js";
+import { fetchDataPeriodically, latestData } from "./utils/service.js";
 
 import userRoute from "./routes/user.js";
 import paymentRoute from "./routes/payment.js";
@@ -35,6 +35,7 @@ app.use(cors(corsOption));
 
 app.use("/api/v1/user", userRoute);
 app.use("/api/v1/payment", paymentRoute);
+app.use("/api/v1/latest-data", latestData);
 
 app.get("/", (req, res) => {
   res.send("Server is running");
@@ -48,7 +49,7 @@ io.on("connection", (socket) => {
   });
 });
 
-fetchDataPeriodically(io);
+// fetchDataPeriodically(io);
 
 app.use(errorMiddleware);
 
