@@ -54,28 +54,66 @@ app.get("/", (req, res) => {
 let sportsData = {};
 
 const fetchSportsData = TryCatch(async (req, res, next) => {
-  const sportIds = [1, 3, 13, 18, 2, 4, 9];
-  const promises = sportIds.map((id) =>
-    axios.get(`${API_BASE_URL}/events/inplay?sport_id=${id}&token=${API_TOKEN}`)
+  const sportIds = [3];
+  // const sportIds = [1, 3, 13, 18, 2, 4, 9];
+  sportsData = {};
+
+  // Fetch events for all sport IDs
+  const eventPromises = sportIds.map((id) =>
+    axios.get(
+      `${API_BASE_URL}/v3/events/inplay?sport_id=${id}&token=${API_TOKEN}`
+    )
   );
 
-  const responses = await Promise.allSettled(promises);
+  const eventResponses = await Promise.allSettled(eventPromises);
 
-  sportsData = {};
-  responses.forEach((result, index) => {
+  // Iterate through event responses to fetch odds
+  for (const [index, result] of eventResponses.entries()) {
+    const sportId = sportIds[index];
+    sportsData[sportId] = [];
+
     if (result.status === "fulfilled") {
-      sportsData[sportIds[index]] = result.value.data.results;
+      const events = result.value.data.results.slice(0, 5);
+
+      // Fetch odds for each event
+      const oddsPromises = events.map((event) =>
+        axios
+          .get(
+            `${API_BASE_URL}/v2/event/odds?token=${API_TOKEN}&event_id=${event.id}`
+          )
+          .then((oddsResponse) => ({ event, odds: oddsResponse.data.results }))
+          .catch((error) => {
+            console.error(
+              `Error fetching odds for event ID ${event.id}:`,
+              error.message
+            );
+            return { event, odds: null };
+          })
+      );
+
+      const oddsResults = await Promise.allSettled(oddsPromises);
+
+      // Combine event data with odds
+      oddsResults.forEach((oddsResult) => {
+        if (oddsResult.status === "fulfilled") {
+          sportsData[sportId].push(oddsResult.value);
+        } else {
+          console.error(
+            "Error combining odds and events:",
+            oddsResult.reason.message
+          );
+        }
+      });
     } else {
       console.error(
-        `Error fetching data for sport ID ${sportIds[index]}:`,
+        `Error fetching data for sport ID ${sportId}:`,
         result.reason.message
       );
-      sportsData[sportIds[index]] = null;
     }
-  });
+  }
 
   io.emit("sportsData", sportsData);
-  // console.log("Updated sports data:", sportsData);
+  console.log("Updated sports data with odds:", sportsData);
 });
 
 setInterval(fetchSportsData, 5000);
