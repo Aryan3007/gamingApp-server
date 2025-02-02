@@ -1,8 +1,7 @@
-import { GAME_TOKEN } from "../constants/keys.js";
+import jwt from "jsonwebtoken";
 import { User } from "../models/user.js";
 import { ErrorHandler } from "../utils/utility-class.js";
 import { TryCatch } from "./error.js";
-import jwt from "jsonwebtoken";
 
 const isAuthenticated = TryCatch(async (req, res, next) => {
   const authHeader = req.headers.authorization;
@@ -32,12 +31,10 @@ const isAuthenticated = TryCatch(async (req, res, next) => {
       return next(new ErrorHandler("Token has expired", 401));
     }
     return next(new ErrorHandler("Authentication failed", 500));
-    // return next(new ErrorHandler("Invalid or expired token", 401));
   }
 });
 
 const adminOnly = TryCatch(async (req, res, next) => {
-  // console.log(req.user);
   const user = await User.findById(req.user);
   if (!user) return next(new ErrorHandler("User Not Found", 404));
 
@@ -47,4 +44,4 @@ const adminOnly = TryCatch(async (req, res, next) => {
   next();
 });
 
-export { isAuthenticated, adminOnly };
+export { adminOnly, isAuthenticated };

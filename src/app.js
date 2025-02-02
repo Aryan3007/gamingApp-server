@@ -7,10 +7,11 @@ import { Server } from "socket.io";
 import { corsOption } from "./constants/config.js";
 import { errorMiddleware, TryCatch } from "./middlewares/error.js";
 import { connectDB } from "./utils/features.js";
+import axios from "axios";
 
 import userRoute from "./routes/user.js";
 import paymentRoute from "./routes/payment.js";
-import axios from "axios";
+import { getAllMarkets } from "./utils/service.js";
 
 config({
   path: "./.env",
@@ -45,6 +46,7 @@ app.use(cors(corsOption));
 
 app.use("/api/v1/user", userRoute);
 app.use("/api/v1/payment", paymentRoute);
+app.get("/api/v1/getMarkets", getAllMarkets);
 
 app.get("/", (req, res) => {
   res.send("Server is running");
@@ -117,10 +119,6 @@ const fetchSportsData = TryCatch(async (req, res, next) => {
   }
 });
 
-app.get("/api/v1/getData", (req, res, next) => {
-  return res.json({ sportsDataCache });
-});
-
 setInterval(fetchSportsData, 5000);
 
 io.on("connection", (socket) => {
@@ -139,4 +137,4 @@ server.listen(PORT, () => {
   console.log(`Server is working on port ${PORT} in ${NODE_ENV} mode`);
 });
 
-export { NODE_ENV };
+export { NODE_ENV, API_BASE_URL };
