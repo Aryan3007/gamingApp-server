@@ -20,7 +20,6 @@ const PORT = process.env.PORT || 3000;
 const MONGO_URI = process.env.MONGO_URI || "";
 const NODE_ENV = process.env.NODE_ENV.trim() || "PRODUCTION";
 const API_BASE_URL = process.env.API_BASE_URL || "";
-const API_TOKEN = process.env.API_TOKEN || "";
 
 connectDB(MONGO_URI);
 
@@ -51,67 +50,63 @@ app.get("/", (req, res) => {
   res.send("Server is running");
 });
 
-let sportsData = {};
+const sportsDataCache = {};
+const sportIds = [4];
 
 const fetchSportsData = TryCatch(async (req, res, next) => {
-  const sportIds = [4];
-  sportsData = {};
+  let updatedData = {}; // Store only new updates to minimize WebSocket traffic
 
-  // Fetch events for all sport IDs
-  const eventPromises = sportIds.map((id) =>
-    axios.get(`${API_BASE_URL}/GetMasterbysports?sid=${id}`)
-  );
+  try {
+    // Fetch events for all sport IDs
+    const eventResponses = await Promise.allSettled(
+      sportIds.map((id) => axios.get(`${API_BASE_URL}/GetMasterbysports?sid=${id}`))
+    );
 
-  const eventResponses = await Promise.allSettled(eventPromises);
-  // console.log("Fetched events:", eventResponses);
+    for (const [index, result] of eventResponses.entries()) {
+      const sportId = sportIds[index];
+      updatedData[sportId] = [];
 
-  // Iterate through event responses to fetch odds
-  for (const [index, result] of eventResponses.entries()) {
-    const sportId = sportIds[index];
-    sportsData[sportId] = [];
+      if (result.status !== "fulfilled") {
+        console.error(`❌ Error fetching data for sport ID ${sportId}:`, result.reason.message);
+        continue;
+      }
 
-    if (result.status === "fulfilled") {
       const events = result.value.data;
-      // console.log(events[1].market.id);
+      if (!events || events.length === 0) continue;
 
       // Fetch odds for each event
-      const oddsPromises = events.map((event) =>
-        axios
-          .get(`${API_BASE_URL}/RMatchOdds?Mids=${event.market.id}`)
-          .then((oddsResponse) => ({ event, odds: oddsResponse.data }))
-          .catch((error) => {
-            console.error(
-              `Error fetching odds for event ID ${event.id}:`,
-              error.message
-            );
-            return { event, odds: null };
-          })
+      const oddsResponses = await Promise.allSettled(
+        events.map((event) =>
+          axios
+            .get(`${API_BASE_URL}/RMatchOdds?Mids=${event.market.id}`)
+            .then((oddsResponse) => ({ event, odds: oddsResponse.data }))
+            .catch((error) => {
+              console.error(`❌ Error fetching odds for event ${event.id}:`, error.message);
+              return { event, odds: [] };;
+            })
+        )
       );
 
-      const oddsResults = await Promise.allSettled(oddsPromises);
-
-      // Combine event data with odds
-      oddsResults.forEach((oddsResult) => {
-        if (oddsResult.status === "fulfilled") {
-          // console.log("match: ", oddsResult.value);
-          if(oddsResult.value) sportsData[sportId].push(oddsResult.value);
-        } else {
-          console.error(
-            "Error combining odds and events:",
-            oddsResult.reason.message
-          );
+      // Process and update only valid results
+      oddsResponses.forEach((oddsResult) => {
+        if (oddsResult.status === "fulfilled" && oddsResult.value?.odds) {
+          updatedData[sportId].push(oddsResult.value);
         }
       });
-    } else {
-      console.error(
-        `Error fetching data for sport ID ${sportId}:`,
-        result.reason.message
-      );
     }
-  }
 
-  io.emit("sportsData", sportsData);
-  // console.log("Updated sports data with odds:", sportsData);
+    // Check if data has changed before emitting updates
+    if (JSON.stringify(updatedData) !== JSON.stringify(sportsDataCache)) {
+      sportsDataCache[sportIds] = updatedData;
+      io.emit("sportsData", updatedData);
+      // console.log(updatedData);
+      console.log("📡 Sports data updated and sent to clients.");
+    } else {
+      console.log("✅ No new updates, skipping WebSocket emit.");
+    }
+  } catch (error) {
+    console.error("❌ Unexpected error in fetchSportsData:", error.message);
+  }
 });
 
 setInterval(fetchSportsData, 5000);
@@ -119,7 +114,7 @@ setInterval(fetchSportsData, 5000);
 io.on("connection", (socket) => {
   console.log("Client connected:", socket.id);
 
-  socket.emit("sportsData", sportsData);
+  socket.emit("sportsData", sportsDataCache);
 
   socket.on("disconnect", () => {
     console.log("Client disconnected:", socket.id);
