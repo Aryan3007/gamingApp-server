@@ -59,7 +59,9 @@ const fetchSportsData = TryCatch(async (req, res, next) => {
   try {
     // Fetch events for all sport IDs
     const eventResponses = await Promise.allSettled(
-      sportIds.map((id) => axios.get(`${API_BASE_URL}/GetMasterbysports?sid=${id}`))
+      sportIds.map((id) =>
+        axios.get(`${API_BASE_URL}/GetMasterbysports?sid=${id}`)
+      )
     );
 
     for (const [index, result] of eventResponses.entries()) {
@@ -67,7 +69,10 @@ const fetchSportsData = TryCatch(async (req, res, next) => {
       updatedData[sportId] = [];
 
       if (result.status !== "fulfilled") {
-        console.error(`❌ Error fetching data for sport ID ${sportId}:`, result.reason.message);
+        console.error(
+          `❌ Error fetching data for sport ID ${sportId}:`,
+          result.reason.message
+        );
         continue;
       }
 
@@ -81,8 +86,11 @@ const fetchSportsData = TryCatch(async (req, res, next) => {
             .get(`${API_BASE_URL}/RMatchOdds?Mids=${event.market.id}`)
             .then((oddsResponse) => ({ event, odds: oddsResponse.data }))
             .catch((error) => {
-              console.error(`❌ Error fetching odds for event ${event.id}:`, error.message);
-              return { event, odds: [] };;
+              console.error(
+                `❌ Error fetching odds for event ${event.id}:`,
+                error.message
+              );
+              return { event, odds: [] };
             })
         )
       );
@@ -100,13 +108,17 @@ const fetchSportsData = TryCatch(async (req, res, next) => {
       sportsDataCache[sportIds] = updatedData;
       io.emit("sportsData", updatedData);
       // console.log(updatedData);
-      console.log("📡 Sports data updated and sent to clients.");
+      // console.log("📡 Sports data updated and sent to clients.");
     } else {
       console.log("✅ No new updates, skipping WebSocket emit.");
     }
   } catch (error) {
     console.error("❌ Unexpected error in fetchSportsData:", error.message);
   }
+});
+
+app.get("/api/v1/getData", (req, res, next) => {
+  return res.json({ sportsDataCache });
 });
 
 setInterval(fetchSportsData, 5000);
