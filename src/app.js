@@ -106,8 +106,8 @@ const fetchSportsData = TryCatch(async (req, res, next) => {
     // Check if data has changed before emitting updates
     if (JSON.stringify(updatedData) !== JSON.stringify(sportsDataCache)) {
       sportsDataCache[sportIds] = updatedData;
-      io.emit("sportsData", updatedData);
-      console.log(updatedData);
+      io.emit("sportsData", sportsDataCache);
+      // console.log(sportsDataCache);
       // console.log("📡 Sports data updated and sent to clients.");
     } else {
       console.log("✅ No new updates, skipping WebSocket emit.");
@@ -126,7 +126,7 @@ setInterval(fetchSportsData, 5000);
 io.on("connection", (socket) => {
   console.log("Client connected:", socket.id);
 
-  socket.emit("sportsData", { sportsDataCache: serverDataCache });
+  socket.emit("sportsData", sportsDataCache);
 
   socket.on("disconnect", () => {
     console.log("Client disconnected:", socket.id);
