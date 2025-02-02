@@ -52,21 +52,18 @@ app.get("/", (req, res) => {
 });
 
 let sportsData = {};
-let upcomingSportsData = {};
 
 const fetchSportsData = TryCatch(async (req, res, next) => {
-  const sportIds = [3];
-  // const sportIds = [1, 3, 13, 18, 2, 4, 9];
+  const sportIds = [4];
   sportsData = {};
 
   // Fetch events for all sport IDs
   const eventPromises = sportIds.map((id) =>
-    axios.get(
-      `${API_BASE_URL}/v3/events/inplay?sport_id=${id}&token=${API_TOKEN}`
-    )
+    axios.get(`${API_BASE_URL}/GetMasterbysports?sid=${id}`)
   );
 
   const eventResponses = await Promise.allSettled(eventPromises);
+  // console.log("Fetched events:", eventResponses);
 
   // Iterate through event responses to fetch odds
   for (const [index, result] of eventResponses.entries()) {
@@ -74,15 +71,14 @@ const fetchSportsData = TryCatch(async (req, res, next) => {
     sportsData[sportId] = [];
 
     if (result.status === "fulfilled") {
-      const events = result.value.data.results.slice(0, 5);
+      const events = result.value.data;
+      // console.log(events[1].market.id);
 
       // Fetch odds for each event
       const oddsPromises = events.map((event) =>
         axios
-          .get(
-            `${API_BASE_URL}/v2/event/odds?token=${API_TOKEN}&event_id=${event.id}`
-          )
-          .then((oddsResponse) => ({ event, odds: oddsResponse.data.results }))
+          .get(`${API_BASE_URL}/RMatchOdds?Mids=${event.market.id}`)
+          .then((oddsResponse) => ({ event, odds: oddsResponse.data }))
           .catch((error) => {
             console.error(
               `Error fetching odds for event ID ${event.id}:`,
@@ -115,67 +111,15 @@ const fetchSportsData = TryCatch(async (req, res, next) => {
   }
 
   io.emit("sportsData", sportsData);
-  // console.log("Updated sports data with odds:", sportsData);
-});
-
-const fetchUpcomingEvents = TryCatch(async (req, res, next) => {
-  const sportIds = [3];
-
-  const promises = sportIds.map((id) =>
-    axios.get(
-      `${API_BASE_URL}/v3/events/upcoming?sport_id=${id}&token=${API_TOKEN}`
-    )
-  );
-
-  const responses = await Promise.allSettled(promises);
-
-  const upcomingSportsData = {};
-
-  for (const [index, result] of responses.entries()) {
-    if (result.status === "fulfilled") {
-      const events = result.value.data.results.slice(0, 5);
-
-      const eventPromises = events.map(async (event) => {
-        try {
-          const oddsResponse = await axios.get(
-            `${API_BASE_URL}/v2/event/odds?token=${API_TOKEN}&event_id=${event.id}`
-          );
-          return {
-            ...event,
-            odds: oddsResponse.data.results || null,
-          };
-        } catch (error) {
-          console.error(
-            `Error fetching odds for event ID ${event.id}:`,
-            error.message
-          );
-          return { ...event, odds: null };
-        }
-      });
-
-      const enrichedEvents = await Promise.all(eventPromises);
-      upcomingSportsData[sportIds[index]] = enrichedEvents;
-    } else {
-      console.error(
-        `Error fetching upcoming events for sport ID ${sportIds[index]}:`,
-        result.reason.message
-      );
-      upcomingSportsData[sportIds[index]] = null;
-    }
-  }
-
-  io.emit("upcomingSportsData", upcomingSportsData);
-  console.log("Updated upcoming sports data:", upcomingSportsData);
+  console.log("Updated sports data with odds:", sportsData);
 });
 
 setInterval(fetchSportsData, 5000);
-setInterval(fetchUpcomingEvents, 5000);
 
 io.on("connection", (socket) => {
   console.log("Client connected:", socket.id);
 
   socket.emit("sportsData", sportsData);
-  socket.emit("upcomingSportsData", upcomingSportsData);
 
   socket.on("disconnect", () => {
     console.log("Client disconnected:", socket.id);
