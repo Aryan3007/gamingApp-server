@@ -94,7 +94,7 @@ const fetchSportsData = TryCatch(async (req, res, next) => {
       oddsResults.forEach((oddsResult) => {
         if (oddsResult.status === "fulfilled") {
           // console.log("match: ", oddsResult.value);
-          sportsData[sportId].push(oddsResult.value);
+          sportsData[sportId].push(oddsResult.value || null);
         } else {
           console.error(
             "Error combining odds and events:",
@@ -111,7 +111,7 @@ const fetchSportsData = TryCatch(async (req, res, next) => {
   }
 
   io.emit("sportsData", sportsData);
-  console.log("Updated sports data with odds:", sportsData);
+  // console.log("Updated sports data with odds:", sportsData);
 });
 
 setInterval(fetchSportsData, 5000);
