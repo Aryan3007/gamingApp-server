@@ -1,13 +1,6 @@
 import mongoose from "mongoose";
 import jwt from "jsonwebtoken";
 
-const cookieOptions = {
-  maxAge: 15 * 24 * 60 * 60 * 1000,
-  sameSite: "none",
-  httpOnly: true,
-  secure: process.env.NODE_ENV === "PRODUCTION",
-};
-
 const connectDB = (uri) => {
   mongoose
     .connect(uri, {
@@ -28,10 +21,9 @@ const connectDB = (uri) => {
 };
 
 const sendToken = (res, user, code, message) => {
-  const key = "GAME_TOKEN";
   const token = jwt.sign({ _id: user._id }, process.env.JWT_SECRET);
 
-  return res.status(code).cookie(key, token, cookieOptions).json({
+  return res.status(code).json({
     success: true,
     user,
     message,
@@ -39,4 +31,4 @@ const sendToken = (res, user, code, message) => {
   });
 };
 
-export { connectDB, sendToken, cookieOptions };
+export { connectDB, sendToken };

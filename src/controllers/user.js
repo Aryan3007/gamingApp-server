@@ -1,10 +1,9 @@
 import { compare } from "bcrypt";
-import { GAME_TOKEN } from "../constants/keys.js";
+import mongoose from "mongoose";
 import { TryCatch } from "../middlewares/error.js";
 import { User } from "../models/user.js";
-import { cookieOptions, sendToken } from "../utils/features.js";
+import { sendToken } from "../utils/features.js";
 import { ErrorHandler } from "../utils/utility-class.js";
-import mongoose from "mongoose";
 
 const newUser = TryCatch(async (req, res, next) => {
   const { name, email, password, currency, role, gender, amount } = req.body;
@@ -157,28 +156,4 @@ const userBanned = TryCatch(async (req, res, next) => {
   });
 });
 
-const logout = TryCatch(async (req, res) => {
-  return res
-    .status(200)
-    .cookie(GAME_TOKEN, "", {
-      ...cookieOptions,
-      maxAge: 0,
-      path: "/",
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-    })
-    .json({
-      success: true,
-      message: "Logged out Successfully",
-    });
-});
-
-export {
-  getMyProfile,
-  login,
-  logout,
-  newUser,
-  getAllUsers,
-  addAmount,
-  userBanned,
-};
+export { addAmount, getAllUsers, getMyProfile, login, newUser, userBanned };

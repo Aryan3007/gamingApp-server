@@ -4,7 +4,6 @@ import {
   getAllUsers,
   getMyProfile,
   login,
-  logout,
   newUser,
   userBanned,
 } from "../controllers/user.js";
@@ -19,8 +18,6 @@ app.use(isAuthenticated);
 app.post("/new", adminOnly, newUser);
 
 app.get("/me", getMyProfile);
-
-app.get("/logout", logout);
 
 app.get("/allusers", adminOnly, getAllUsers);
 
