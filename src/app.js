@@ -94,7 +94,7 @@ const fetchSportsData = TryCatch(async (req, res, next) => {
       oddsResults.forEach((oddsResult) => {
         if (oddsResult.status === "fulfilled") {
           // console.log("match: ", oddsResult.value);
-          sportsData[sportId].push(oddsResult.value || null);
+          if(oddsResult.value) sportsData[sportId].push(oddsResult.value);
         } else {
           console.error(
             "Error combining odds and events:",
