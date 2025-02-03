@@ -17,6 +17,12 @@ const getAllMarkets = TryCatch(async (req, res, next) => {
     return res.json(cachedData.data);
   }
 
+  // Fetch all events
+  const eventRes = await axios.get(`${API_BASE_URL}/GetMasterbysports?sid=4`);
+  const allEvents = eventRes.data || [];
+  const eventDetail =
+    allEvents.find((event) => event.event.id == eventId) || null;
+
   // Fetch bookmaker and fancy markets
   const [bookmakerRes, fancyRes] = await Promise.all([
     axios.get(`${API_BASE_URL}/GetBookMaker?eventid=${eventId}`),
@@ -53,7 +59,7 @@ const getAllMarkets = TryCatch(async (req, res, next) => {
     odds: fancyOddsRes.find((odd) => odd.marketId === f.market.id) || [],
   }));
 
-  const responseData = { eventId, getBookmaker, getFancy };
+  const responseData = { eventId, eventDetail, getBookmaker, getFancy };
 
   // Store in cache
   cache.set(cacheKey, { data: responseData, timestamp: Date.now() });
