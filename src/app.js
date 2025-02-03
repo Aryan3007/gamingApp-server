@@ -106,7 +106,9 @@ const fetchSportsData = TryCatch(async (req, res, next) => {
     }
 
     // Check if data has changed before emitting updates
-    if (JSON.stringify(updatedData) !== JSON.stringify(sportsDataCache)) {
+    if (
+      JSON.stringify(updatedData) !== JSON.stringify(sportsDataCache[sportIds])
+    ) {
       sportsDataCache[sportIds] = updatedData;
       io.emit("sportsData", sportsDataCache);
       // console.log(sportsDataCache);

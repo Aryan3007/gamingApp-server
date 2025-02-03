@@ -23,35 +23,35 @@ const getAllMarkets = TryCatch(async (req, res, next) => {
     axios.get(`${API_BASE_URL}/GetFancy?eventid=${eventId}`),
   ]);
 
-  const bookmakerData = bookmakerRes.data || [];
-  const fancyData = fancyRes.data || [];
+  // Take only the first 25 from each
+  const bookmakerData = (bookmakerRes.data || []).slice(0, 25);
+  const fancyData = (fancyRes.data || []).slice(0, 25);
+
+  // Get market IDs for API request
+  const bookmakerIds = bookmakerData.map((b) => b.market.id);
+  const fancyIds = fancyData.map((f) => f.market.id);
 
   // Fetch odds
-  const bookMakerOddsRes = await Promise.allSettled(
-    bookmakerData.map((bookmaker) =>
-      axios
-        .get(`${API_BASE_URL}/RBookmaker?Mids=${bookmaker.market.id}`)
-        .then((res) => ({ ...bookmaker, odds: res.data }))
-        .catch(() => ({ ...bookmaker, odds: [] }))
-    )
-  );
+  const bookMakerOddsRes = await axios
+    .get(`${API_BASE_URL}/RBookmaker?Mids=${bookmakerIds.join(",")}`)
+    .then((res) => res.data)
+    .catch(() => []);
 
-  const fancyOddsRes = await Promise.allSettled(
-    fancyData.map((fancy) =>
-      axios
-        .get(`${API_BASE_URL}/RBookmaker?Mids=${fancy.market.id}`)
-        .then((res) => ({ ...fancy, odds: res.data }))
-        .catch(() => ({ ...fancy, odds: [] }))
-    )
-  );
+  const fancyOddsRes = await axios
+    .get(`${API_BASE_URL}/RFancy?Mids=${fancyIds.join(",")}`)
+    .then((res) => res.data)
+    .catch(() => []);
 
-  const getBookmaker = bookMakerOddsRes
-    .filter((res) => res.status === "fulfilled")
-    .map((res) => res.value);
+  // Map odds back to their respective markets
+  const getBookmaker = bookmakerData.map((b) => ({
+    ...b,
+    odds: bookMakerOddsRes.find((odd) => odd.marketId === b.market.id) || [],
+  }));
 
-  const getFancy = fancyOddsRes
-    .filter((res) => res.status === "fulfilled")
-    .map((res) => res.value);
+  const getFancy = fancyData.map((f) => ({
+    ...f,
+    odds: fancyOddsRes.find((odd) => odd.marketId === f.market.id) || [],
+  }));
 
   const responseData = { eventId, getBookmaker, getFancy };
 
@@ -60,6 +60,5 @@ const getAllMarkets = TryCatch(async (req, res, next) => {
 
   return res.json(responseData);
 });
-
 
 export { getAllMarkets };
