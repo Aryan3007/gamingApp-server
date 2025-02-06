@@ -11,6 +11,7 @@ import axios from "axios";
 
 import userRoute from "./routes/user.js";
 import paymentRoute from "./routes/payment.js";
+import betRoute from "./routes/bet.js";
 import { getAllMarkets } from "./utils/service.js";
 
 config({
@@ -46,6 +47,7 @@ app.use(cors(corsOption));
 
 app.use("/api/v1/user", userRoute);
 app.use("/api/v1/payment", paymentRoute);
+app.use("/api/v1/bet", betRoute);
 app.get("/api/v1/getMarkets", getAllMarkets);
 
 app.get("/", (req, res) => {
@@ -105,23 +107,16 @@ const fetchSportsData = TryCatch(async (req, res, next) => {
       });
     }
 
-    // Check if data has changed before emitting updates
-    if (
-      JSON.stringify(updatedData) !== JSON.stringify(sportsDataCache[sportIds])
-    ) {
-      sportsDataCache[sportIds] = updatedData;
-      io.emit("sportsData", sportsDataCache);
-      // console.log(sportsDataCache);
-      // console.log("📡 Sports data updated and sent to clients.");
-    } else {
-      console.log("✅ No new updates, skipping WebSocket emit.");
-    }
+    sportsDataCache[sportIds] = updatedData;
+    io.emit("sportsData", sportsDataCache);
+    // console.log(sportsDataCache);
+    // console.log("📡 Sports data updated and sent to clients.");
   } catch (error) {
     console.error("❌ Unexpected error in fetchSportsData:", error.message);
   }
 });
 
-setInterval(fetchSportsData, 5000);
+setInterval(fetchSportsData, 1000);
 
 io.on("connection", (socket) => {
   console.log("Client connected:", socket.id);
