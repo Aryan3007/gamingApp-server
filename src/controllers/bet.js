@@ -61,6 +61,7 @@ const placeBet = TryCatch(async (req, res, next) => {
   const { userId } = req.query;
   const {
     eventId,
+    match,
     marketId,
     selectionId,
     fancyNumber,
@@ -70,13 +71,13 @@ const placeBet = TryCatch(async (req, res, next) => {
     type,
   } = req.body;
 
-  if (!eventId || !marketId || !stake || !odds || !category || !type)
+  if (!eventId || !marketId || !stake || !odds || !category || !type || !match)
     return next(new ErrorHandler("Please provide all fields", 400));
 
-  if (category !== "fancy" && !selectionId)
+  if (category.toLowerCase() !== "fancy" && !selectionId)
     return next(new ErrorHandler("Please provide Selection ID", 400));
 
-  if (category === "fancy" && !fancyNumber)
+  if (category.toLowerCase() === "fancy" && !fancyNumber)
     return next(new ErrorHandler("Please provide fancy number", 400));
 
   const user = await User.findById(userId);
@@ -99,13 +100,14 @@ const placeBet = TryCatch(async (req, res, next) => {
   const newBet = await Bet.create({
     userId,
     eventId,
+    match,
     marketId,
     selectionId,
     fancyNumber,
     stake,
     odds,
-    category,
-    type,
+    category: category.toLowerCase().trim(),
+    type: type.toLowerCase().trim(),
     payout: stake + profit,
   });
 

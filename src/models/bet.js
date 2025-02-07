@@ -11,6 +11,10 @@ const schema = new Schema(
       type: String,
       required: true,
     },
+    match: {
+      type: String,
+      required: true,
+    },
     marketId: {
       type: String,
       required: true,
