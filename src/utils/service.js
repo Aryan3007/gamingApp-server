@@ -137,8 +137,8 @@ const settleBets = async (eventId) => {
       ) {
         const winnerNumber = fancyResults[bet.marketId];
         isWinningBet =
-          (bet.type === "yes" && bet.fancyNumber <= winnerNumber) ||
-          (bet.type === "no" && bet.fancyNumber > winnerNumber);
+          (bet.type === "back" && bet.fancyNumber <= winnerNumber) ||
+          (bet.type === "lay" && bet.fancyNumber > winnerNumber);
       }
 
       // Update bet status

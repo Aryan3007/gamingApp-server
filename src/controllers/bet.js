@@ -43,7 +43,7 @@ const calculateProfitAndLoss = (stake, odds, type, category) => {
         profit = stake;
         loss = (stake * odds) / 100;
       } else {
-        return { error: "Invalid bet type! Must be 'yes' or 'no'." };
+        return { error: "Invalid bet type! Must be 'back' or 'lay'." };
       }
       break;
 

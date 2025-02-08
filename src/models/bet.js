@@ -26,7 +26,7 @@ const schema = new Schema(
     },
     type: {
       type: String,
-      enum: ["back", "lay", "yes", "no"],
+      enum: ["back", "lay"],
       required: true,
     },
     selectionId: {
