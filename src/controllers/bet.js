@@ -36,10 +36,10 @@ const calculateProfitAndLoss = (stake, odds, type, category) => {
       break;
 
     case "fancy":
-      if (type === "yes") {
+      if (type === "back") {
         profit = (stake * odds) / 100;
         loss = stake;
-      } else if (type === "no") {
+      } else if (type === "lay") {
         profit = stake;
         loss = (stake * odds) / 100;
       } else {
