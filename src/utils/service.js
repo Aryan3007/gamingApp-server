@@ -79,7 +79,7 @@ const settleBets = async (eventId) => {
     const pendingBets = await Bet.find({ eventId, status: "pending" });
 
     if (pendingBets.length === 0) {
-      console.log(`No pending bets found for event ${eventId}`);
+      console.log(`No pending bets found for event Id ${eventId}`);
       return;
     }
 
@@ -96,25 +96,32 @@ const settleBets = async (eventId) => {
     // Fetch market results in batches
     const matchOddsRes = await fetchOddsInBatches(
       `${API_BASE_URL}/RMatchOdds`,
-      fancyIds
+      Array.from(matchOddsMarketIds)
     );
     const bookmakerRes = await fetchOddsInBatches(
       `${API_BASE_URL}/RBookmaker`,
-      bookmakerIds
+      Array.from(bookmakerMarketIds)
     );
     const fancyRes = await fetchOddsInBatches(
       `${API_BASE_URL}/RFancy`,
-      fancyIds
+      Array.from(fancyMarketIds)
     );
 
+    // Filter out invalid data
     const matchOddsResults = Object.fromEntries(
-      matchOddsRes.data.map((m) => [m.marketId, m.winner])
+      matchOddsRes.data
+        .filter((m) => m.winner !== undefined && m.winner !== null)
+        .map((m) => [m.marketId, m.winner])
     );
     const bookmakerResults = Object.fromEntries(
-      bookmakerRes.data.map((m) => [m.marketId, m.winner])
+      bookmakerRes.data
+        .filter((m) => m.winner !== undefined && m.winner !== null)
+        .map((m) => [m.marketId, m.winner])
     );
     const fancyResults = Object.fromEntries(
-      fancyRes.data.map((m) => [m.marketId, m.winner])
+      fancyRes.data
+        .filter((m) => m.winner !== undefined && m.winner !== null)
+        .map((m) => [m.marketId, m.winner])
     );
 
     // Prepare bet updates and user balance updates
@@ -125,12 +132,12 @@ const settleBets = async (eventId) => {
       let isWinningBet = false;
 
       if (bet.category === "match odds" && matchOddsResults[bet.marketId]) {
-        isWinningBet = matchOddsResults[bet.marketId].includes(bet.selectionId);
+        isWinningBet = matchOddsResults[bet.marketId] === bet.selectionId;
       } else if (
         bet.category === "bookmaker" &&
         bookmakerResults[bet.marketId]
       ) {
-        isWinningBet = bookmakerResults[bet.marketId].includes(bet.selectionId);
+        isWinningBet = bookmakerResults[bet.marketId] === bet.selectionId;
       } else if (
         bet.category === "fancy" &&
         fancyResults[bet.marketId] !== undefined
@@ -176,4 +183,4 @@ const settleBets = async (eventId) => {
   }
 };
 
-export { getAllMarkets };
+export { getAllMarkets, settleBets };

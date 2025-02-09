@@ -8,13 +8,13 @@ import http from "http";
 import { Server } from "socket.io";
 import { corsOption } from "./constants/config.js";
 import { errorMiddleware, TryCatch } from "./middlewares/error.js";
-import { connectDB } from "./utils/features.js";
+import { connectDB, getFormattedTimestamp } from "./utils/features.js";
 
 import betRoute from "./routes/bet.js";
 import miscRoute from "./routes/misc.js";
 import paymentRoute from "./routes/payment.js";
 import userRoute from "./routes/user.js";
-import { getAllMarkets } from "./utils/service.js";
+import { getAllMarkets, settleBets } from "./utils/service.js";
 
 config({
   path: "./.env",
@@ -66,7 +66,7 @@ app.get("/", (req, res) => {
 const sportsDataCache = {};
 const sportIds = [4];
 
-const fetchSportsData = TryCatch(async (req, res, next) => {
+const fetchSportsData = async () => {
   let updatedData = {};
 
   try {
@@ -123,9 +123,52 @@ const fetchSportsData = TryCatch(async (req, res, next) => {
   } catch (error) {
     console.error("❌ Unexpected error in fetchSportsData:", error.message);
   }
-});
+};
 
-setInterval(fetchSportsData, 1000);
+const settlingBets = async () => {
+  try {
+    const startTime = Date.now();
+    console.log(`⏳ [${getFormattedTimestamp()}] Starting bet settlement...`);
+
+    // Fetch events for all sportIds
+    const eventResponses = await Promise.allSettled(
+      sportIds.map((id) =>
+        axios.get(`${API_BASE_URL}/GetMasterbysports?sid=${id}`)
+      )
+    );
+    // console.log(eventResponses[0].value.data);
+
+    // Extract valid event IDs from responses
+    const eventIds = eventResponses
+      .filter((res) => res.status === "fulfilled" && res.value?.data)
+      .flatMap((res) => res.value.data.map((event) => event.event.id))
+      .filter((id) => id !== undefined && id !== null);
+
+    if (eventIds.length === 0) {
+      console.log("⚠️ No valid event IDs found.");
+      return;
+    }
+
+    console.log(`✅ Settling bets for event Ids: ${eventIds.join(", ")}`);
+
+    await Promise.all(eventIds.map((eventId) => settleBets(eventId)));
+
+    const endTime = Date.now();
+    console.log(
+      `✅ [${getFormattedTimestamp()}] Bet settlement completed in ${
+        endTime - startTime
+      }ms.`
+    );
+  } catch (error) {
+    console.error(
+      `❌ [${getFormattedTimestamp()}] Unexpected error in settling Bets:`,
+      error
+    );
+  }
+};
+
+setInterval(fetchSportsData, 1 * 1000);
+setInterval(settlingBets, 5 * 60 * 1000);
 
 io.on("connection", (socket) => {
   console.log("Client connected:", socket.id);
