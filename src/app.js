@@ -1,3 +1,5 @@
+import axios from "axios";
+import { v2 as cloudinary } from "cloudinary";
 import cookieParser from "cookie-parser";
 import cors from "cors";
 import { config } from "dotenv";
@@ -7,11 +9,11 @@ import { Server } from "socket.io";
 import { corsOption } from "./constants/config.js";
 import { errorMiddleware, TryCatch } from "./middlewares/error.js";
 import { connectDB } from "./utils/features.js";
-import axios from "axios";
 
-import userRoute from "./routes/user.js";
-import paymentRoute from "./routes/payment.js";
 import betRoute from "./routes/bet.js";
+import miscRoute from "./routes/misc.js";
+import paymentRoute from "./routes/payment.js";
+import userRoute from "./routes/user.js";
 import { getAllMarkets } from "./utils/service.js";
 
 config({
@@ -24,6 +26,12 @@ const NODE_ENV = process.env.NODE_ENV.trim() || "PRODUCTION";
 const API_BASE_URL = process.env.API_BASE_URL || "";
 
 connectDB(MONGO_URI);
+
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
 
 const app = express();
 const server = http.createServer(app);
@@ -48,6 +56,7 @@ app.use(cors(corsOption));
 app.use("/api/v1/user", userRoute);
 app.use("/api/v1/payment", paymentRoute);
 app.use("/api/v1/bet", betRoute);
+app.use("/api/v1/misc", miscRoute);
 app.get("/api/v1/getMarkets", getAllMarkets);
 
 app.get("/", (req, res) => {
@@ -134,4 +143,4 @@ server.listen(PORT, () => {
   console.log(`Server is working on port ${PORT} in ${NODE_ENV} mode`);
 });
 
-export { NODE_ENV, API_BASE_URL };
+export { API_BASE_URL, NODE_ENV };

@@ -1,5 +1,7 @@
 import mongoose from "mongoose";
 import jwt from "jsonwebtoken";
+import { v2 as cloudinary } from "cloudinary";
+import { v4 as uuid } from "uuid";
 
 const connectDB = (uri) => {
   mongoose
@@ -31,4 +33,44 @@ const sendToken = (res, user, code, message) => {
   });
 };
 
-export { connectDB, sendToken };
+const uploadFileToCloudinary = async (file) => {
+  const getBase64 = (file) =>
+    `data:${file.mimetype};base64,${file.buffer.toString("base64")}`;
+
+  try {
+    const result = await cloudinary.uploader.upload(getBase64(file), {
+      resource_type: "auto",
+      public_id: uuid(),
+    });
+
+    return {
+      public_id: result.public_id,
+      url: result.secure_url,
+    };
+  } catch (error) {
+    throw new Error("Error uploading file to Cloudinary: " + error.message);
+  }
+};
+
+const dltFileFromCloudinary = async (public_id) => {
+  try {
+    const result = await cloudinary.uploader.destroy(public_id);
+
+    if (result.result === "ok") {
+      return {
+        success: true,
+        message: "File deleted successfully",
+      };
+    }
+
+    return {
+      success: false,
+      message: "Failed to delete file",
+      cloudinaryResponse: result,
+    };
+  } catch (error) {
+    throw new Error("Error deleting file from Cloudinary: " + error.message);
+  }
+};
+
+export { connectDB, sendToken, uploadFileToCloudinary, dltFileFromCloudinary };
