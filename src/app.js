@@ -168,7 +168,7 @@ const settlingBets = async () => {
 };
 
 setInterval(fetchSportsData, 1 * 1000);
-setInterval(settlingBets, 5 * 60 * 1000);
+setInterval(settlingBets, 1 * 60 * 1000);
 
 io.on("connection", (socket) => {
   console.log("Client connected:", socket.id);
