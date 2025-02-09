@@ -58,7 +58,7 @@ const calculateProfitAndLoss = (stake, odds, type, category) => {
 };
 
 const placeBet = TryCatch(async (req, res, next) => {
-  const { userId } = req.query;
+  const user = await User.findById(req.user);
   const {
     eventId,
     match,
@@ -71,6 +71,8 @@ const placeBet = TryCatch(async (req, res, next) => {
     type,
   } = req.body;
 
+  if (!user) return next(new ErrorHandler("User not found", 404));
+
   if (!eventId || !marketId || !stake || !odds || !category || !type || !match)
     return next(new ErrorHandler("Please provide all fields", 400));
 
@@ -79,9 +81,6 @@ const placeBet = TryCatch(async (req, res, next) => {
 
   if (category.toLowerCase() === "fancy" && !fancyNumber)
     return next(new ErrorHandler("Please provide fancy number", 400));
-
-  const user = await User.findById(userId);
-  if (!user) return next(new ErrorHandler("User not found", 404));
 
   const { profit, loss, error } = calculateProfitAndLoss(
     stake,
@@ -98,7 +97,7 @@ const placeBet = TryCatch(async (req, res, next) => {
   user.amount -= loss;
 
   const newBet = await Bet.create({
-    userId,
+    userId: user._id,
     eventId,
     match,
     marketId,
@@ -121,12 +120,10 @@ const placeBet = TryCatch(async (req, res, next) => {
 });
 
 const betTransactions = TryCatch(async (req, res, next) => {
-  const { userId } = req.query;
-
-  const user = await User.findById(userId);
+  const user = await User.findById(req.user);
   if (!user) return next(new ErrorHandler("User not found", 404));
 
-  const bets = await Bet.find({ userId });
+  const bets = await Bet.find({ userId: user._id });
 
   return res.status(200).json({
     success: true,
