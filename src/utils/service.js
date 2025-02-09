@@ -94,35 +94,45 @@ const settleBets = async (eventId) => {
     });
 
     // Fetch market results in batches
-    const matchOddsRes = await fetchOddsInBatches(
-      `${API_BASE_URL}/RMatchOdds`,
-      Array.from(matchOddsMarketIds)
-    );
-    const bookmakerRes = await fetchOddsInBatches(
-      `${API_BASE_URL}/RBookmaker`,
-      Array.from(bookmakerMarketIds)
-    );
-    const fancyRes = await fetchOddsInBatches(
-      `${API_BASE_URL}/RFancy`,
-      Array.from(fancyMarketIds)
-    );
+    const [matchOddsRes, bookmakerRes, fancyRes] = await Promise.allSettled([
+      fetchOddsInBatches(
+        `${API_BASE_URL}/RMatchOdds`,
+        Array.from(matchOddsMarketIds)
+      ),
+      fetchOddsInBatches(
+        `${API_BASE_URL}/RBookmaker`,
+        Array.from(bookmakerMarketIds)
+      ),
+      fetchOddsInBatches(`${API_BASE_URL}/RFancy`, Array.from(fancyMarketIds)),
+    ]);
 
-    // Filter out invalid data
-    const matchOddsResults = Object.fromEntries(
-      matchOddsRes.data
-        .filter((m) => m.winner !== undefined && m.winner !== null)
-        .map((m) => [m.marketId, m.winner])
-    );
-    const bookmakerResults = Object.fromEntries(
-      bookmakerRes.data
-        .filter((m) => m.winner !== undefined && m.winner !== null)
-        .map((m) => [m.marketId, m.winner])
-    );
-    const fancyResults = Object.fromEntries(
-      fancyRes.data
-        .filter((m) => m.winner !== undefined && m.winner !== null)
-        .map((m) => [m.marketId, m.winner])
-    );
+    // Handle failures gracefully
+    const matchOddsResults =
+      matchOddsRes.status === "fulfilled" && matchOddsRes.value?.data
+        ? Object.fromEntries(
+            matchOddsRes.value.data
+              .filter((m) => m.winner !== undefined && m.winner !== null)
+              .map((m) => [m.marketId, m.winner])
+          )
+        : {};
+
+    const bookmakerResults =
+      bookmakerRes.status === "fulfilled" && bookmakerRes.value?.data
+        ? Object.fromEntries(
+            bookmakerRes.value.data
+              .filter((m) => m.winner !== undefined && m.winner !== null)
+              .map((m) => [m.marketId, m.winner])
+          )
+        : {};
+
+    const fancyResults =
+      fancyRes.status === "fulfilled" && fancyRes.value?.data
+        ? Object.fromEntries(
+            fancyRes.value.data
+              .filter((m) => m.winner !== undefined && m.winner !== null)
+              .map((m) => [m.marketId, m.winner])
+          )
+        : {};
 
     // Prepare bet updates and user balance updates
     const betUpdates = [];
@@ -130,14 +140,20 @@ const settleBets = async (eventId) => {
 
     for (const bet of pendingBets) {
       let isWinningBet = false;
+      let isMarketResultAvailable = false;
 
-      if (bet.category === "match odds" && matchOddsResults[bet.marketId]) {
+      if (
+        bet.category === "match odds" &&
+        matchOddsResults[bet.marketId] !== undefined
+      ) {
         isWinningBet = matchOddsResults[bet.marketId] === bet.selectionId;
+        isMarketResultAvailable = true;
       } else if (
         bet.category === "bookmaker" &&
-        bookmakerResults[bet.marketId]
+        bookmakerResults[bet.marketId] !== undefined
       ) {
         isWinningBet = bookmakerResults[bet.marketId] === bet.selectionId;
+        isMarketResultAvailable = true;
       } else if (
         bet.category === "fancy" &&
         fancyResults[bet.marketId] !== undefined
@@ -146,17 +162,21 @@ const settleBets = async (eventId) => {
         isWinningBet =
           (bet.type === "back" && bet.fancyNumber <= winnerNumber) ||
           (bet.type === "lay" && bet.fancyNumber > winnerNumber);
+        isMarketResultAvailable = true;
       }
 
-      // Update bet status
+      // Skip the bet if no market result is available
+      if (!isMarketResultAvailable) continue;
+
+      // Only update bet status if market result exists
       betUpdates.push({
         updateOne: {
           filter: { _id: bet._id },
-          update: { status: isWinningBet ? "won" : "lose" },
+          update: { status: isWinningBet ? "won" : "lost" },
         },
       });
 
-      // Update user balance
+      // Only update user balance if the bet is won
       if (isWinningBet) {
         if (!userUpdates.has(bet.userId)) userUpdates.set(bet.userId, 0);
         userUpdates.set(bet.userId, userUpdates.get(bet.userId) + bet.payout);
