@@ -108,27 +108,27 @@ const settleBets = async (eventId) => {
 
     // Handle failures gracefully
     const matchOddsResults =
-      matchOddsRes.status === "fulfilled" && matchOddsRes.value?.data
+      matchOddsRes.status === "fulfilled" && matchOddsRes.value
         ? Object.fromEntries(
-            matchOddsRes.value.data
+            matchOddsRes.value
               .filter((m) => m.winner !== undefined && m.winner !== null)
               .map((m) => [m.marketId, m.winner])
           )
         : {};
 
     const bookmakerResults =
-      bookmakerRes.status === "fulfilled" && bookmakerRes.value?.data
+      bookmakerRes.status === "fulfilled" && bookmakerRes.value
         ? Object.fromEntries(
-            bookmakerRes.value.data
+            bookmakerRes.value
               .filter((m) => m.winner !== undefined && m.winner !== null)
               .map((m) => [m.marketId, m.winner])
           )
         : {};
 
     const fancyResults =
-      fancyRes.status === "fulfilled" && fancyRes.value?.data
+      fancyRes.status === "fulfilled" && fancyRes.value
         ? Object.fromEntries(
-            fancyRes.value.data
+            fancyRes.value
               .filter((m) => m.winner !== undefined && m.winner !== null)
               .map((m) => [m.marketId, m.winner])
           )
@@ -184,14 +184,14 @@ const settleBets = async (eventId) => {
     }
 
     // Bulk update bets
-    if (betUpdates.length) await Bet.bulkWrite(betUpdates);
+    if (betUpdates.length > 0) await Bet.bulkWrite(betUpdates);
 
     // Bulk update user balances
-    if (userUpdates.size) {
+    if (userUpdates.size > 0) {
       const userBalanceUpdates = [...userUpdates].map(([userId, amount]) => ({
         updateOne: {
           filter: { _id: userId },
-          update: { $inc: { balance: amount } },
+          update: { $inc: { amount } },
         },
       }));
       await User.bulkWrite(userBalanceUpdates);
