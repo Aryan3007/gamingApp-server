@@ -82,6 +82,14 @@ const placeBet = TryCatch(async (req, res, next) => {
   if (category.toLowerCase() === "fancy" && !fancyNumber)
     return next(new ErrorHandler("Please provide fancy number", 400));
 
+  if (category.toLowerCase() === "fancy" && (stake < 100 || stake > 500000))
+    return next(
+      new ErrorHandler(
+        "Invalid stake amount! It must be between 100 and 5 Lakh",
+        400
+      )
+    );
+
   const { profit, loss, error } = calculateProfitAndLoss(
     stake,
     odds,
