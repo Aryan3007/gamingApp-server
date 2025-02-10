@@ -123,7 +123,7 @@ const addAmount = TryCatch(async (req, res, next) => {
   });
 });
 
-const userBanned = TryCatch(async (req, res, next) => {
+const changeUserStatus = TryCatch(async (req, res, next) => {
   const id = req.params.id;
   const { status } = req.body;
 
@@ -156,4 +156,11 @@ const userBanned = TryCatch(async (req, res, next) => {
   });
 });
 
-export { addAmount, getAllUsers, getMyProfile, login, newUser, userBanned };
+export {
+  addAmount,
+  getAllUsers,
+  getMyProfile,
+  login,
+  newUser,
+  changeUserStatus,
+};
