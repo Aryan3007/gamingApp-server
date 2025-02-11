@@ -7,10 +7,10 @@ const app = express.Router();
 
 app.get("/get-images", getImages);
 
-// app.use(isAuthenticated);
+app.use(isAuthenticated);
 
-app.post("/add-image", singleImage, uploadImage);
+app.post("/add-image", adminOnly, singleImage, uploadImage);
 
-app.delete("/dlt-image/:id", dltImage);
+app.delete("/dlt-image/:id", adminOnly, dltImage);
 
 export default app;
