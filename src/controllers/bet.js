@@ -140,4 +140,86 @@ const betTransactions = TryCatch(async (req, res, next) => {
   });
 });
 
-export { placeBet, betTransactions };
+const getAllBets = TryCatch(async (req, res, next) => {
+  const bets = await Bet.find();
+
+  return res.status(200).json({
+    success: true,
+    message: "Bets fetched successfully",
+    bets,
+  });
+});
+
+const getPendingBets = TryCatch(async (req, res, next) => {
+  const bets = await Bet.find({ status: "pending" });
+
+  return res.status(200).json({
+    success: true,
+    message: "Bets fetched successfully",
+    bets,
+  });
+});
+
+const changeBetStatus = TryCatch(async (req, res, next) => {
+  const { betId, status } = req.body;
+
+  const validStatuses = ["won", "lost", "pending"];
+  if (!validStatuses.includes(status)) {
+    return next(new ErrorHandler("Invalid status value", 400));
+  }
+
+  const bet = await Bet.findById(betId);
+  if (!bet) return next(new ErrorHandler("Bet not found", 404));
+
+  if (bet.status === status)
+    return next(
+      new ErrorHandler(`Bet status is already set to ${status}`, 400)
+    );
+
+  const allowedTransitions = {
+    pending: ["won", "lost"],
+    won: ["lost"],
+    lost: ["won"],
+  };
+
+  if (!allowedTransitions[bet.status].includes(status)) {
+    return next(
+      new ErrorHandler(
+        `Cannot change status from ${bet.status} to ${status}`,
+        400
+      )
+    );
+  }
+
+  const user = await User.findById(bet.userId);
+  if (!user) return next(new ErrorHandler("User not found", 404));
+
+  if (bet.status === "won" && status === "lost") {
+    if (user.amount < bet.payout) {
+      return next(
+        new ErrorHandler("Insufficient balance to reverse winnings", 400)
+      );
+    }
+    user.amount -= bet.payout;
+  } else if (status === "won") {
+    user.amount += bet.payout;
+  }
+
+  await user.save();
+  bet.status = status;
+  await bet.save();
+
+  return res.status(200).json({
+    success: true,
+    message: "Bet status changed successfully",
+    bet,
+  });
+});
+
+export {
+  placeBet,
+  betTransactions,
+  getAllBets,
+  getPendingBets,
+  changeBetStatus,
+};

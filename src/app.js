@@ -7,14 +7,14 @@ import express from "express";
 import http from "http";
 import { Server } from "socket.io";
 import { corsOption } from "./constants/config.js";
-import { errorMiddleware, TryCatch } from "./middlewares/error.js";
+import { errorMiddleware } from "./middlewares/error.js";
 import { connectDB, getFormattedTimestamp } from "./utils/features.js";
+import { getAllMarkets, settleBets } from "./utils/service.js";
 
 import betRoute from "./routes/bet.js";
 import miscRoute from "./routes/misc.js";
 import paymentRoute from "./routes/payment.js";
 import userRoute from "./routes/user.js";
-import { getAllMarkets, settleBets } from "./utils/service.js";
 
 config({
   path: "./.env",
