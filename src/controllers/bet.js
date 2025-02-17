@@ -68,8 +68,8 @@ const placeBet = TryCatch(async (req, res, next) => {
   );
   if (error) return next(new ErrorHandler(error, 400));
 
-  if (category.toLowerCase() === "fancy") {
-    if (user.amount < loss)
+  if (category === "fancy") {
+    if (user.amount < Math.abs(loss))
       return next(new ErrorHandler("Insufficient balance", 400));
 
     user.amount += loss;
@@ -80,7 +80,7 @@ const placeBet = TryCatch(async (req, res, next) => {
       .lean();
 
     if (!margin) {
-      if (user.amount < loss)
+      if (user.amount < Math.abs(loss))
         return next(new ErrorHandler("Insufficient balance", 400));
 
       user.amount += loss;
@@ -147,7 +147,7 @@ const betTransactions = TryCatch(async (req, res, next) => {
   if (!user) return next(new ErrorHandler("User not found", 404));
 
   const { eventId } = req.query;
-  
+
   const filter = { userId: user._id };
   if (eventId) filter.eventId = eventId;
 
