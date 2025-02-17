@@ -1,68 +1,19 @@
 import { TryCatch } from "../middlewares/error.js";
 import { Bet } from "../models/bet.js";
+import { Margin } from "../models/margin.js";
 import { User } from "../models/user.js";
+import { calculateNewMargin, calculateProfitAndLoss } from "../utils/helper.js";
 import { ErrorHandler } from "../utils/utility-class.js";
-
-const calculateProfitAndLoss = (stake, odds, type, category) => {
-  let profit = 0;
-  let loss = 0;
-
-  category = category.toLowerCase().trim();
-  type = type.toLowerCase().trim();
-
-  switch (category) {
-    case "match odds":
-      if (type === "back") {
-        profit = stake * (odds - 1);
-        loss = stake;
-      } else if (type === "lay") {
-        profit = stake;
-        loss = stake * (odds - 1);
-      } else {
-        return { error: "Invalid bet type! Must be 'back' or 'lay'." };
-      }
-      break;
-
-    case "bookmaker":
-      if (type === "back") {
-        profit = (odds * stake) / 100;
-        loss = stake;
-      } else if (type === "lay") {
-        profit = stake;
-        loss = (odds * stake) / 100;
-      } else {
-        return { error: "Invalid bet type! Must be 'back' or 'lay'." };
-      }
-      break;
-
-    case "fancy":
-      if (type === "back") {
-        profit = (stake * odds) / 100;
-        loss = stake;
-      } else if (type === "lay") {
-        profit = stake;
-        loss = (stake * odds) / 100;
-      } else {
-        return { error: "Invalid bet type! Must be 'back' or 'lay'." };
-      }
-      break;
-
-    default:
-      return {
-        error:
-          "Invalid category! Must be 'match odds', 'bookmaker', or 'fancy'.",
-      };
-  }
-
-  return { profit, loss };
-};
 
 const placeBet = TryCatch(async (req, res, next) => {
   const user = await User.findById(req.user);
-  const {
+  if (!user) return next(new ErrorHandler("User not found", 404));
+
+  let {
     eventId,
     match,
     marketId,
+    selection,
     selectionId,
     fancyNumber,
     stake,
@@ -71,24 +22,43 @@ const placeBet = TryCatch(async (req, res, next) => {
     type,
   } = req.body;
 
-  if (!user) return next(new ErrorHandler("User not found", 404));
+  category = category?.toLowerCase().trim();
+  type = type?.toLowerCase().trim();
 
-  if (!eventId || !marketId || !stake || !odds || !category || !type || !match)
-    return next(new ErrorHandler("Please provide all fields", 400));
+  if (
+    !(
+      eventId &&
+      marketId &&
+      stake &&
+      odds &&
+      category &&
+      type &&
+      match &&
+      selection
+    )
+  ) {
+    return next(new ErrorHandler("Please provide all required fields", 400));
+  }
 
-  if (category.toLowerCase() !== "fancy" && !selectionId)
-    return next(new ErrorHandler("Please provide Selection ID", 400));
+  const validCategories = ["match odds", "fancy", "bookmaker"];
+  const validTypes = ["back", "lay"];
 
-  if (category.toLowerCase() === "fancy" && !fancyNumber)
-    return next(new ErrorHandler("Please provide fancy number", 400));
+  if (!validCategories.includes(category))
+    return next(new ErrorHandler("Invalid Category", 400));
+  if (!validTypes.includes(type))
+    return next(new ErrorHandler("Invalid Type", 400));
 
-  if (category.toLowerCase() === "fancy" && (stake < 100 || stake > 500000))
-    return next(
-      new ErrorHandler(
-        "Invalid stake amount! It must be between 100 and 5 Lakh",
-        400
-      )
-    );
+  if (category !== "fancy" && !selectionId)
+    return next(new ErrorHandler("Selection ID is required", 400));
+
+  if (category === "fancy") {
+    if (!fancyNumber)
+      return next(new ErrorHandler("Please provide a fancy number", 400));
+    if (stake < 100 || stake > 500000)
+      return next(
+        new ErrorHandler("Stake must be between 100 and 5 Lakh", 400)
+      );
+  }
 
   const { profit, loss, error } = calculateProfitAndLoss(
     stake,
@@ -96,29 +66,74 @@ const placeBet = TryCatch(async (req, res, next) => {
     type,
     category
   );
-
   if (error) return next(new ErrorHandler(error, 400));
 
-  if (user.amount < loss)
-    return next(new ErrorHandler("Insufficient balance", 400));
+  if (category.toLowerCase() === "fancy") {
+    if (user.amount < loss)
+      return next(new ErrorHandler("Insufficient balance", 400));
 
-  user.amount -= loss;
+    user.amount += loss;
+    await user.save();
+  } else {
+    const margin = await Margin.findOne({ userId: user._id, eventId, marketId })
+      .sort({ createdAt: -1 })
+      .lean();
+
+    if (!margin) {
+      if (user.amount < loss)
+        return next(new ErrorHandler("Insufficient balance", 400));
+
+      user.amount += loss;
+      await user.save();
+
+      await Margin.create({
+        userId: user._id,
+        eventId,
+        marketId,
+        selectionId,
+        profit,
+        loss,
+      });
+    } else {
+      const { newProfit, newLoss } = calculateNewMargin(
+        margin,
+        selectionId,
+        type,
+        profit,
+        loss
+      );
+
+      const oldNegative = Math.min(margin.profit, margin.loss, 0);
+      const newNegative = Math.min(newProfit, newLoss, 0);
+
+      user.amount += Math.abs(oldNegative) + newNegative;
+      await user.save();
+
+      await Margin.create({
+        userId: user._id,
+        eventId,
+        marketId,
+        selectionId,
+        profit: newProfit,
+        loss: newLoss,
+      });
+    }
+  }
 
   const newBet = await Bet.create({
     userId: user._id,
     eventId,
     match,
+    selection,
     marketId,
     selectionId,
     fancyNumber,
     stake,
     odds,
-    category: category.toLowerCase().trim(),
-    type: type.toLowerCase().trim(),
+    category,
+    type,
     payout: stake + profit,
   });
-
-  await user.save();
 
   return res.status(201).json({
     success: true,
@@ -131,7 +146,12 @@ const betTransactions = TryCatch(async (req, res, next) => {
   const user = await User.findById(req.user);
   if (!user) return next(new ErrorHandler("User not found", 404));
 
-  const bets = await Bet.find({ userId: user._id });
+  const { eventId } = req.query;
+  
+  const filter = { userId: user._id };
+  if (eventId) filter.eventId = eventId;
+
+  const bets = await Bet.find(filter);
 
   return res.status(200).json({
     success: true,
@@ -140,18 +160,11 @@ const betTransactions = TryCatch(async (req, res, next) => {
   });
 });
 
-const getAllBets = TryCatch(async (req, res, next) => {
-  const bets = await Bet.find();
+const getBets = TryCatch(async (req, res, next) => {
+  const { status } = req.query;
 
-  return res.status(200).json({
-    success: true,
-    message: "Bets fetched successfully",
-    bets,
-  });
-});
-
-const getPendingBets = TryCatch(async (req, res, next) => {
-  const bets = await Bet.find({ status: "pending" });
+  const filter = status ? { status: status.toLowerCase() } : {};
+  const bets = await Bet.find(filter);
 
   return res.status(200).json({
     success: true,
@@ -216,10 +229,29 @@ const changeBetStatus = TryCatch(async (req, res, next) => {
   });
 });
 
-export {
-  placeBet,
-  betTransactions,
-  getAllBets,
-  getPendingBets,
-  changeBetStatus,
-};
+const getMargins = TryCatch(async (req, res, next) => {
+  const user = await User.findById(req.user);
+  if (!user) return next(new ErrorHandler("User Not Found", 400));
+
+  const { eventId } = req.query;
+  if (!eventId) return next(new ErrorHandler("Event ID is required", 400));
+
+  const margins = await Margin.find({ userId: user._id, eventId }).sort({
+    createdAt: -1,
+  });
+
+  const latestMargins = {};
+  for (const margin of margins) {
+    if (!latestMargins[margin.marketId]) {
+      latestMargins[margin.marketId] = margin;
+    }
+  }
+
+  return res.status(200).json({
+    success: true,
+    message: "Margins fetched successfully",
+    margins: latestMargins,
+  });
+});
+
+export { placeBet, betTransactions, getBets, changeBetStatus, getMargins };

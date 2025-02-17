@@ -33,6 +33,10 @@ const schema = new Schema(
       type: String,
       default: null,
     },
+    selection: {
+      type: String,
+      required: true,
+    },
     fancyNumber: {
       type: Number,
       default: null,

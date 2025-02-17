@@ -1,12 +1,12 @@
 import express from "express";
-import { adminOnly, isAuthenticated } from "../middlewares/auth.js";
 import {
   betTransactions,
   changeBetStatus,
-  getAllBets,
-  getPendingBets,
+  getBets,
+  getMargins,
   placeBet,
 } from "../controllers/bet.js";
+import { adminOnly, isAuthenticated } from "../middlewares/auth.js";
 
 const app = express.Router();
 
@@ -16,9 +16,9 @@ app.post("/place", placeBet);
 
 app.get("/transactions", betTransactions);
 
-app.get("/allbets", adminOnly, getAllBets);
+app.get("/margins", getMargins);
 
-app.get("/pendingbets", adminOnly, getPendingBets);
+app.get("/bets", adminOnly, getBets);
 
 app.post("/change-status", adminOnly, changeBetStatus);
 

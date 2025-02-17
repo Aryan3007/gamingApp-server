@@ -8,13 +8,14 @@ import http from "http";
 import { Server } from "socket.io";
 import { corsOption } from "./constants/config.js";
 import { errorMiddleware } from "./middlewares/error.js";
-import { connectDB, getFormattedTimestamp } from "./utils/features.js";
+import { connectDB } from "./utils/features.js";
 import { getAllMarkets, settleBets } from "./utils/service.js";
 
 import betRoute from "./routes/bet.js";
 import miscRoute from "./routes/misc.js";
 import paymentRoute from "./routes/payment.js";
 import userRoute from "./routes/user.js";
+import { getFormattedTimestamp } from "./utils/helper.js";
 
 config({
   path: "./.env",
@@ -168,7 +169,7 @@ const settlingBets = async () => {
 };
 
 setInterval(fetchSportsData, 1 * 1000);
-setInterval(settlingBets, 1 * 60 * 1000);
+// setInterval(settlingBets, 1 * 60 * 1000);
 
 io.on("connection", (socket) => {
   console.log("Client connected:", socket.id);
