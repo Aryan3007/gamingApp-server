@@ -114,8 +114,8 @@ const placeBet = TryCatch(async (req, res, next) => {
         eventId,
         marketId,
         selectionId,
-        profit: newProfit,
-        loss: newLoss,
+        profit: margin.selectionId === selectionId ? newProfit : newLoss,
+        loss: margin.selectionId === selectionId ? newLoss : newProfit,
       });
     }
   }
