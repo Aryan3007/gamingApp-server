@@ -68,8 +68,7 @@ const sportsDataCache = {};
 const sportIds = [4];
 
 const fetchSportsData = async () => {
-  let updatedData = {};
-
+  let updatedData = [];
   try {
     // Fetch events for all sport IDs
     const eventResponses = await Promise.allSettled(
@@ -85,13 +84,13 @@ const fetchSportsData = async () => {
       if (result.status !== "fulfilled") {
         console.error(
           `❌ Error fetching data for sport ID ${sportId}:`,
-          result.reason.message
+          result.reason?.message
         );
         continue;
       }
 
-      const events = result.value.data;
-      if (!events || events.length === 0) continue;
+      const events = result.value?.data || [];
+      if (events.length === 0) continue;
 
       // Fetch odds for each event
       const oddsResponses = await Promise.allSettled(
@@ -116,8 +115,8 @@ const fetchSportsData = async () => {
         }
       });
     }
-
     sportsDataCache[sportIds] = updatedData;
+
     io.emit("sportsData", sportsDataCache);
     // console.log(sportsDataCache);
     // console.log("📡 Sports data updated and sent to clients.");

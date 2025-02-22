@@ -36,7 +36,8 @@ const getAllMarkets = TryCatch(async (req, res, next) => {
     allEvents.find((event) => event.event.id == eventId) || null;
 
   // Fetch bookmaker and fancy markets
-  const [bookmakerRes, fancyRes] = await Promise.all([
+  const [matchOddsRes, bookmakerRes, fancyRes] = await Promise.all([
+    axios.get(`${API_BASE_URL}/RMatchOdds?Mids=${eventDetail.market.id}`),
     axios.get(`${API_BASE_URL}/GetBookMaker?eventid=${eventId}`),
     axios.get(`${API_BASE_URL}/GetFancy?eventid=${eventId}`),
   ]);
@@ -44,6 +45,7 @@ const getAllMarkets = TryCatch(async (req, res, next) => {
   // Take only the first 25 from each
   const bookmakerData = bookmakerRes.data || [];
   const fancyData = fancyRes.data || [];
+  const matchOddsData = matchOddsRes.data || [];
 
   // Get market IDs for API request
   const bookmakerIds = bookmakerData.map((b) => b.market.id);
@@ -60,10 +62,37 @@ const getAllMarkets = TryCatch(async (req, res, next) => {
   );
 
   // Map odds back to their respective markets
-  const getBookmaker = bookmakerData.map((b) => ({
-    ...b,
-    odds: bookMakerOddsRes.find((odd) => odd.marketId === b.market.id) || [],
-  }));
+  const getBookmaker = bookmakerData.map((b) => {
+    const odds =
+      bookMakerOddsRes.find((odd) => odd.marketId === b.market.id) || [];
+
+    if (
+      b.market.status === "OPEN" &&
+      b.market.name === "Bookmaker 0%Comm" &&
+      odds.runners
+    ) {
+      const updateOdds = (runnerIndex, type, multiplier) => {
+        if (
+          odds.runners?.[runnerIndex]?.[type]?.[0]?.price === 0 &&
+          matchOddsData?.[0]?.runners?.[runnerIndex]?.[type]?.[0]
+        ) {
+          odds.runners[runnerIndex][type][0].price =
+            Math.floor(
+              matchOddsData[0].runners[runnerIndex][type][0].price * 100
+            ) % 100;
+          odds.runners[runnerIndex][type][0].size =
+            matchOddsData[0].runners[runnerIndex][type][0].size * multiplier;
+        }
+      };
+
+      updateOdds(0, "back", 2);
+      updateOdds(0, "lay", 3);
+      updateOdds(1, "back", 3);
+      updateOdds(1, "lay", 2);
+    }
+
+    return { ...b, odds };
+  });
 
   const getFancy = fancyData.map((f) => ({
     ...f,
