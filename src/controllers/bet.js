@@ -21,6 +21,7 @@ const placeBet = TryCatch(async (req, res, next) => {
     category,
     type,
   } = req.body;
+  let payout = 0;
 
   category = category?.toLowerCase().trim();
   type = type?.toLowerCase().trim();
@@ -120,6 +121,10 @@ const placeBet = TryCatch(async (req, res, next) => {
     }
   }
 
+  if (category === "match odds") payout = odds * stake;
+  else if (category === "bookmaker") payout = (odds * stake) / 100;
+  else payout = stake + profit;
+
   const newBet = await Bet.create({
     userId: user._id,
     eventId,
@@ -132,7 +137,7 @@ const placeBet = TryCatch(async (req, res, next) => {
     odds,
     category,
     type,
-    payout: stake + profit,
+    payout,
   });
 
   return res.status(201).json({
@@ -161,9 +166,35 @@ const betTransactions = TryCatch(async (req, res, next) => {
 });
 
 const getBets = TryCatch(async (req, res, next) => {
-  const { status } = req.query;
+  const { status, userId, selectionId, eventId, category, type } = req.query;
 
-  const filter = status ? { status: status.toLowerCase() } : {};
+  const filter = {};
+
+  if (status) {
+    if (!["won", "pending", "lost"].includes(status)) {
+      return next(new ErrorHandler("Invalid status", 400));
+    }
+    filter.status = status;
+  }
+
+  if (type) {
+    if (!["back", "lay"].includes(type)) {
+      return next(new ErrorHandler("Invalid type", 400));
+    }
+    filter.type = type;
+  }
+
+  if (category) {
+    if (!["match odds", "bookmaker", "fancy"].includes(category)) {
+      return next(new ErrorHandler("Invalid category", 400));
+    }
+    filter.category = category;
+  }
+
+  if (userId) filter.userId = userId;
+  if (selectionId) filter.selectionId = selectionId;
+  if (eventId) filter.eventId = eventId;
+
   const bets = await Bet.find(filter);
 
   return res.status(200).json({
