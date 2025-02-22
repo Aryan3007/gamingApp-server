@@ -152,8 +152,7 @@ const settlingBets = async () => {
 
     console.log(`✅ Settling bets for event Ids: ${eventIds.join(", ")}`);
 
-    // await Promise.all(eventIds.map((eventId) => settleBets(eventId)));
-    await settleBets("34035224");
+    await Promise.all(eventIds.map((eventId) => settleBets(eventId)));
 
     const endTime = Date.now();
     console.log(
