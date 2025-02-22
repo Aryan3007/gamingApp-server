@@ -152,7 +152,8 @@ const settlingBets = async () => {
 
     console.log(`✅ Settling bets for event Ids: ${eventIds.join(", ")}`);
 
-    await Promise.all(eventIds.map((eventId) => settleBets(eventId)));
+    // await Promise.all(eventIds.map((eventId) => settleBets(eventId)));
+    await settleBets("34035224");
 
     const endTime = Date.now();
     console.log(
@@ -169,7 +170,7 @@ const settlingBets = async () => {
 };
 
 setInterval(fetchSportsData, 1 * 1000);
-// setInterval(settlingBets, 1 * 60 * 1000);
+setInterval(settlingBets, 1 * 60 * 1000);
 
 io.on("connection", (socket) => {
   console.log("Client connected:", socket.id);

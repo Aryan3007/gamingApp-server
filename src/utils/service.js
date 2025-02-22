@@ -103,12 +103,12 @@ const settleBets = async (eventId) => {
     // Handle failures gracefully
     const formatResults = (res) =>
       res.status === "fulfilled" && res.value
-        ? Object.fromEntries(
+        ? new Map(
             res.value
               .filter((m) => m.winner !== undefined && m.winner !== null)
               .map((m) => [m.marketId, m.winner])
           )
-        : {};
+        : new Map();
 
     const matchOddsResults = formatResults(matchOddsRes);
     const bookmakerResults = formatResults(bookmakerRes);
@@ -144,7 +144,7 @@ const settleBets = async (eventId) => {
       let isWinningBet = false;
       let isMarketResultAvailable = false;
 
-      if (category === "match odds" && matchOddsResults[marketId]) {
+      if (category === "match odds" && matchOddsResults.has(marketId)) {
         const margin = marginMap.get(`${userId}-${marketId}`);
         if (!margin) {
           console.log(
@@ -161,7 +161,7 @@ const settleBets = async (eventId) => {
           (matchOddsResults.get(marketId) !== selectionId && type === "lay");
 
         isMarketResultAvailable = true;
-      } else if (category === "bookmaker" && bookmakerResults[marketId]) {
+      } else if (category === "bookmaker" && bookmakerResults.has(marketId)) {
         const margin = marginMap.get(`${userId}-${marketId}`);
         if (!margin) {
           console.log(
@@ -178,8 +178,8 @@ const settleBets = async (eventId) => {
           (bookmakerResults.get(marketId) !== selectionId && type === "lay");
 
         isMarketResultAvailable = true;
-      } else if (category === "fancy" && fancyResults[marketId]) {
-        const winnerNumber = fancyResults[bet.marketId];
+      } else if (category === "fancy" && fancyResults.has(marketId)) {
+        const winnerNumber = fancyResults.get(marketId);
         isWinningBet =
           (type === "back" && fancyNumber <= winnerNumber) ||
           (type === "lay" && fancyNumber > winnerNumber);
@@ -226,4 +226,3 @@ const settleBets = async (eventId) => {
 };
 
 export { getAllMarkets, settleBets };
-
