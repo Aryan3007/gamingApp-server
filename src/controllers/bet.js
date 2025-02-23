@@ -238,15 +238,18 @@ const changeBetStatus = TryCatch(async (req, res, next) => {
   const user = await User.findById(bet.userId);
   if (!user) return next(new ErrorHandler("User not found", 404));
 
-  if (bet.status === "won" && status === "lost") {
-    if (user.amount < bet.payout) {
+  if (bet.status === "pending") {
+    if (status === "won") user.amount += bet.payout - bet.stake;
+    else if (status === "lost") user.amount -= bet.stake;
+  } else if (bet.status === "lost") {
+    user.amount += bet.payout;
+  } else {
+    if (user.amount < bet.payout - 2 * bet.stake) {
       return next(
         new ErrorHandler("Insufficient balance to reverse winnings", 400)
       );
     }
-    user.amount -= bet.payout;
-  } else if (status === "won") {
-    user.amount += bet.payout;
+    user.amount = user.amount - bet.payout - 2 * bet.stake;
   }
 
   await user.save();
