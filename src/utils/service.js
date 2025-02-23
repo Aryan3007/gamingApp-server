@@ -37,7 +37,7 @@ const getAllMarkets = TryCatch(async (req, res, next) => {
 
   // Fetch bookmaker and fancy markets
   const [matchOddsRes, bookmakerRes, fancyRes] = await Promise.all([
-    axios.get(`${API_BASE_URL}/RMatchOdds?Mids=${eventDetail.market.id}`),
+    axios.get(`${API_BASE_URL}/RMatchOdds?Mids=${eventDetail?.market?.id}`),
     axios.get(`${API_BASE_URL}/GetBookMaker?eventid=${eventId}`),
     axios.get(`${API_BASE_URL}/GetFancy?eventid=${eventId}`),
   ]);
@@ -146,9 +146,9 @@ const settleBets = async (eventId) => {
     const bookmakerResults = formatResults(bookmakerRes);
     const fancyResults = formatResults(fancyRes);
 
-    console.log("match Odds: " + JSON.stringify(matchOddsResults, null, 2));
-    console.log("Bookmaker: " + JSON.stringify(bookmakerResults, null, 2));
-    console.log("Fancy: " + JSON.stringify(fancyResults, null, 2));
+    console.log("Odds: ", JSON.stringify(Object.fromEntries(matchOddsResults)));
+    console.log("BM: ", JSON.stringify(Object.fromEntries(bookmakerResults)));
+    console.log("Fancy: ", JSON.stringify(Object.fromEntries(fancyResults)));
 
     const margins = await Margin.find({ eventId })
       .sort({ createdAt: -1 })

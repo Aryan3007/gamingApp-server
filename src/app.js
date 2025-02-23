@@ -66,6 +66,7 @@ app.get("/", (req, res) => {
 
 const sportsDataCache = {};
 const sportIds = [4];
+let pastEventIds = [];
 
 const fetchSportsData = async () => {
   let updatedData = [];
@@ -130,13 +131,24 @@ const settlingBets = async () => {
     const startTime = Date.now();
     console.log(`⏳ [${getFormattedTimestamp()}] Starting bet settlement...`);
 
+    console.log(`✅ Settling bets for event Ids: ${pastEventIds.join(", ")}`);
+
+    // await settleBets(34057482);
+    await Promise.all(pastEventIds.map((eventId) => settleBets(eventId)));
+
+    const endTime = Date.now();
+    console.log(
+      `✅ [${getFormattedTimestamp()}] Bet settlement completed in ${
+        endTime - startTime
+      }ms.`
+    );
+
     // Fetch events for all sportIds
     const eventResponses = await Promise.allSettled(
       sportIds.map((id) =>
         axios.get(`${API_BASE_URL}/GetMasterbysports?sid=${id}`)
       )
     );
-    // console.log(eventResponses[0].value.data);
 
     // Extract valid event IDs from responses
     const eventIds = eventResponses
@@ -148,18 +160,7 @@ const settlingBets = async () => {
       console.log("⚠️ No valid event IDs found.");
       return;
     }
-
-    console.log(`✅ Settling bets for event Ids: ${eventIds.join(", ")}`);
-
-    // await settleBets(34048874);
-    await Promise.all(eventIds.map((eventId) => settleBets(eventId)));
-
-    const endTime = Date.now();
-    console.log(
-      `✅ [${getFormattedTimestamp()}] Bet settlement completed in ${
-        endTime - startTime
-      }ms.`
-    );
+    pastEventIds = eventIds;
   } catch (error) {
     console.error(
       `❌ [${getFormattedTimestamp()}] Unexpected error in settling Bets:`,
