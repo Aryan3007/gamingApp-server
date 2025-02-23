@@ -271,12 +271,12 @@ const settleBets = async (eventId) => {
       // console.log(JSON.stringify(userBalanceUpdates, null, 2));
     }
 
-    console.log(`Bets for event Id: ${eventId} settled successfully.`);
     console.log(`Bets Updates:`, JSON.stringify(betUpdates, null, 2));
     console.log(
       `User Updates:`,
       JSON.stringify(Object.fromEntries(userUpdates), null, 2)
     );
+    console.log(`Bets for event Id: ${eventId} settled successfully.`);
   } catch (error) {
     console.error(`Error settling bets for event Id: ${eventId}:`, error);
   }
