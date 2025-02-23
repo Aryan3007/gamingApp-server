@@ -166,7 +166,7 @@ const betTransactions = TryCatch(async (req, res, next) => {
 });
 
 const getBets = TryCatch(async (req, res, next) => {
-  const { status, userId, eventId, category, type } = req.query;
+  const { status, userId, selectionId, eventId, category, type } = req.query;
 
   const filter = {};
 
@@ -192,6 +192,7 @@ const getBets = TryCatch(async (req, res, next) => {
   }
 
   if (userId) filter.userId = userId;
+  if (selectionId) filter.selectionId = selectionId;
   if (eventId) filter.eventId = eventId;
 
   const bets = await Bet.find(filter).sort({ createdAt: -1 });
@@ -287,4 +288,4 @@ const getMargins = TryCatch(async (req, res, next) => {
   });
 });
 
-export { betTransactions, changeBetStatus, getBets, getMargins, placeBet };
+export { placeBet, betTransactions, getBets, changeBetStatus, getMargins };
