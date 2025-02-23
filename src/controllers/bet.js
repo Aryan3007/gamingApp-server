@@ -156,7 +156,7 @@ const betTransactions = TryCatch(async (req, res, next) => {
   const filter = { userId: user._id };
   if (eventId) filter.eventId = eventId;
 
-  const bets = await Bet.find(filter);
+  const bets = await Bet.find(filter).sort({ createdAt: -1 });
 
   return res.status(200).json({
     success: true,
@@ -195,7 +195,7 @@ const getBets = TryCatch(async (req, res, next) => {
   if (selectionId) filter.selectionId = selectionId;
   if (eventId) filter.eventId = eventId;
 
-  const bets = await Bet.find(filter);
+  const bets = await Bet.find(filter).sort({ createdAt: -1 });
 
   return res.status(200).json({
     success: true,
