@@ -258,7 +258,7 @@ const changeBetStatus = TryCatch(async (req, res, next) => {
 
   return res.status(200).json({
     success: true,
-    message: "Bet status changed successfully",
+    message: `Bet status changed successfully to ${status}`,
     bet,
   });
 });
