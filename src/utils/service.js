@@ -146,6 +146,10 @@ const settleBets = async (eventId) => {
     const bookmakerResults = formatResults(bookmakerRes);
     const fancyResults = formatResults(fancyRes);
 
+    console.log("match Odds: " + JSON.stringify(matchOddsResults, null, 2));
+    console.log("Bookmaker: " + JSON.stringify(bookmakerResults, null, 2));
+    console.log("Fancy: " + JSON.stringify(fancyResults, null, 2));
+
     const margins = await Margin.find({ eventId })
       .sort({ createdAt: -1 })
       .lean();
