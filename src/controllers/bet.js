@@ -122,7 +122,6 @@ const placeBet = TryCatch(async (req, res, next) => {
   }
 
   if (category === "match odds") payout = odds * stake;
-  else if (category === "bookmaker") payout = (odds * stake) / 100;
   else payout = stake + profit;
 
   const newBet = await Bet.create({
