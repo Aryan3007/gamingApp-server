@@ -38,12 +38,8 @@ const app = express();
 const server = http.createServer(app);
 export const io = new Server(server, {
   cors: {
-    origin: [
-      "https://www.shaktiex.com",
-      "http://localhost:5173",
-      "https://whitesmoke-lark-312915.hostingersite.com",
-    ],
-    // origin: true,
+    // origin: ["https://www.shaktiex.com", "http://localhost:5173"],
+    origin: true,
     credentials: true,
   },
   path: "/socket.io/",
