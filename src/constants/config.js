@@ -10,7 +10,11 @@
 // };
 
 export const corsOption = {
-  origin: ["https://www.shaktiex.com", "http://localhost:5173"],
+  origin: [
+    "https://www.shaktiex.com",
+    "http://localhost:5173",
+    "https://whitesmoke-lark-312915.hostingersite.com",
+  ],
   // origin: true,
   methods: ["GET", "POST", "PUT", "DELETE"],
   credentials: true,
