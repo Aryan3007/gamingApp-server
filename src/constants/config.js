@@ -9,9 +9,9 @@
 //   credentials: true,
 // };
 
-
 export const corsOption = {
-  origin: true,  // Allows all origins
+  origin: ["https://www.shaktiex.com", "http://localhost:5173"],
+  // origin: true,
   methods: ["GET", "POST", "PUT", "DELETE"],
   credentials: true,
 };
