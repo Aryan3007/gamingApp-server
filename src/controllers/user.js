@@ -80,14 +80,12 @@ const getMyProfile = TryCatch(async (req, res, next) => {
 });
 
 const getAllUsers = TryCatch(async (req, res, next) => {
-  const { status, role, page = 1, limit = 9 } = req.query;
+  const { status, role } = req.query;
   const query = {};
   if (status) query.status = status.toLowerCase();
   if (role) query.role = role.toLowerCase();
 
-  const users = await User.find(query)
-    .skip((page - 1) * limit)
-    .limit(parseInt(limit));
+  const users = await User.find(query);
 
   return res.status(200).json({
     success: true,

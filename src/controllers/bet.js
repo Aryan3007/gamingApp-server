@@ -287,4 +287,30 @@ const getMargins = TryCatch(async (req, res, next) => {
   });
 });
 
-export { placeBet, betTransactions, getBets, changeBetStatus, getMargins };
+const getAllMargins = TryCatch(async (req, res, next) => {
+  const user = await User.findById(req.user);
+  if (!user) return next(new ErrorHandler("User Not Found", 400));
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const margins = await Margin.find({
+    userId: user._id,
+    createdAt: { $gte: today }
+  }).sort({ createdAt: -1 });
+
+  const latestMargins = {};
+  for (const margin of margins) {
+    if (!latestMargins[margin.marketId]) {
+      latestMargins[margin.marketId] = margin;
+    }
+  }
+
+  return res.status(200).json({
+    success: true,
+    message: "Latest margins fetched successfully",
+    margins: Object.values(latestMargins),
+  });
+});
+
+export { placeBet, betTransactions, getBets, changeBetStatus, getMargins, getAllMargins };
