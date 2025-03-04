@@ -4,6 +4,7 @@ import { API_BASE_URL } from "../../src/app.js";
 import { TryCatch } from "../middlewares/error.js";
 import { ErrorHandler } from "./utility-class.js";
 import { Bet } from "../models/bet.js";
+import { Margin } from "../models/margin.js";
 
 const cache = new NodeCache({ stdTTL: 3 }); // Cache TTL set to 3 sec
 
