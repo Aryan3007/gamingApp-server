@@ -4,6 +4,9 @@ import { Margin } from "../models/margin.js";
 import { User } from "../models/user.js";
 import { calculateNewMargin, calculateProfitAndLoss } from "../utils/helper.js";
 import { ErrorHandler } from "../utils/utility-class.js";
+import axios from "axios";
+import { API_BASE_URL } from "../../src/app.js";
+
 
 const placeBet = TryCatch(async (req, res, next) => {
   const user = await User.findById(req.user);
@@ -306,10 +309,16 @@ const getAllMargins = TryCatch(async (req, res, next) => {
     }
   }
 
+  const marketIds = Object.keys(latestMargins);
+  const response = await axios.get(`${API_BASE_URL}/RMatchOdds?Mids=${marketIds.join(',')}`);
+  const marketData = response.data;
+
+  const filteredMargins = marketData.filter(market => market.winner === null).map(market => latestMargins[market.marketId]);
+
   return res.status(200).json({
     success: true,
     message: "Latest margins fetched successfully",
-    margins: Object.values(latestMargins),
+    margins: filteredMargins,
   });
 });
 
