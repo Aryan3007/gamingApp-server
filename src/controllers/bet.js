@@ -310,15 +310,21 @@ const getAllMargins = TryCatch(async (req, res, next) => {
   }
 
   const marketIds = Object.keys(latestMargins);
-  const response = await axios.get(`${API_BASE_URL}/RMatchOdds?Mids=${marketIds.join(',')}`);
-  const marketData = response.data;
+  const matchOddsResponse = await axios.get(`${API_BASE_URL}/RMatchOdds?Mids=${marketIds.join(',')}`);
+  const matchOddsData = matchOddsResponse.data;
 
-  const filteredMargins = marketData.filter(market => market.winner === null).map(market => latestMargins[market.marketId]);
+  const bookmakerResponse = await axios.get(`${API_BASE_URL}/RBookmaker?Mids=${marketIds.join(',')}`);
+  const bookmakerData = bookmakerResponse.data;
+
+  const filteredMargins = [
+    ...matchOddsData.length ? matchOddsData.map(market => latestMargins[market.marketId]) : [],
+    ...bookmakerData.length ? bookmakerData.map(market => latestMargins[market.marketId]) : []
+  ];
 
   return res.status(200).json({
     success: true,
     message: "Latest margins fetched successfully",
-    margins: filteredMargins,
+    margins: filteredMargins.length ? filteredMargins : Object.values(latestMargins),
   });
 });
 
