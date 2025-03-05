@@ -4,9 +4,6 @@ import { Margin } from "../models/margin.js";
 import { User } from "../models/user.js";
 import { calculateNewMargin, calculateProfitAndLoss } from "../utils/helper.js";
 import { ErrorHandler } from "../utils/utility-class.js";
-import axios from "axios";
-import { API_BASE_URL } from "../../src/app.js";
-
 
 const placeBet = TryCatch(async (req, res, next) => {
   const user = await User.findById(req.user);
@@ -290,42 +287,4 @@ const getMargins = TryCatch(async (req, res, next) => {
   });
 });
 
-const getAllMargins = TryCatch(async (req, res, next) => {
-  const user = await User.findById(req.user);
-  if (!user) return next(new ErrorHandler("User Not Found", 400));
-
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  const margins = await Margin.find({
-    userId: user._id,
-    createdAt: { $gte: today }
-  }).sort({ createdAt: -1 });
-
-  const latestMargins = {};
-  for (const margin of margins) {
-    if (!latestMargins[margin.marketId]) {
-      latestMargins[margin.marketId] = margin;
-    }
-  }
-
-  const marketIds = Object.keys(latestMargins);
-  const matchOddsResponse = await axios.get(`${API_BASE_URL}/RMatchOdds?Mids=${marketIds.join(',')}`);
-  const matchOddsData = matchOddsResponse.data;
-
-  const bookmakerResponse = await axios.get(`${API_BASE_URL}/RBookmaker?Mids=${marketIds.join(',')}`);
-  const bookmakerData = bookmakerResponse.data;
-
-  const filteredMargins = [
-    ...matchOddsData.length ? matchOddsData.map(market => latestMargins[market.marketId]) : [],
-    ...bookmakerData.length ? bookmakerData.map(market => latestMargins[market.marketId]) : []
-  ];
-
-  return res.status(200).json({
-    success: true,
-    message: "Latest margins fetched successfully",
-    margins: filteredMargins.length ? filteredMargins : Object.values(latestMargins),
-  });
-});
-
-export { placeBet, betTransactions, getBets, changeBetStatus, getMargins, getAllMargins };
+export { placeBet, betTransactions, getBets, changeBetStatus, getMargins };
