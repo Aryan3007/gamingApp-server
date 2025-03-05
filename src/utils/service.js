@@ -106,7 +106,7 @@ const getAllMarkets = TryCatch(async (req, res, next) => {
 
 const settleBets = async (eventId) => {
   try {
-    // const pendingBets = await Bet.find({ _id: "67ba593e4fe96bde1a62438f" });
+    // const pendingBets = await Bet.find({ _id: "67c85e3566b65881353a3be2" });
     const pendingBets = await Bet.find({ eventId, status: "pending" });
     if (pendingBets.length === 0) {
       console.log(`No pending bets found for event Id: ${eventId}`);
@@ -140,8 +140,8 @@ const settleBets = async (eventId) => {
           )
         : new Map();
 
-    // const matchOddsResults = new Map();
-    // matchOddsResults.set("1.239816317", "8928550");
+    // const fancyResults = new Map();
+    // fancyResults.set("4.1741063872898-F2", 89);
     const matchOddsResults = formatResults(matchOddsRes);
     const bookmakerResults = formatResults(bookmakerRes);
     const fancyResults = formatResults(fancyRes);
@@ -231,9 +231,11 @@ const settleBets = async (eventId) => {
         isMarketResultAvailable = true;
       } else if (category === "fancy" && fancyResults.has(marketId)) {
         const winnerNumber = fancyResults.get(marketId);
+
         isWinningBet =
           (type === "back" && fancyNumber <= winnerNumber) ||
           (type === "lay" && fancyNumber > winnerNumber);
+
         isMarketResultAvailable = true;
       }
 
@@ -250,14 +252,18 @@ const settleBets = async (eventId) => {
 
       // Update user balance
       const balanceChange = isWinningBet ? payout - stake : -stake;
-      if (category === "fancy")
-        userUpdates.set(userId, (userUpdates.get(userId) || 0) + payout);
-      else
+      if (category === "fancy") {
+        if (isWinningBet)
+          userUpdates.set(userId, (userUpdates.get(userId) || 0) + payout);
+      } else
         userUpdates.set(userId, (userUpdates.get(userId) || 0) + balanceChange);
     }
 
     // Bulk update bets
-    if (betUpdates.length > 0) await Bet.bulkWrite(betUpdates);
+    if (betUpdates.length > 0) {
+      await Bet.bulkWrite(betUpdates);
+      console.log(`Bets Updates:`, JSON.stringify(betUpdates, null, 2));
+    }
 
     // Bulk update user balances
     if (userUpdates.size > 0) {
@@ -268,14 +274,14 @@ const settleBets = async (eventId) => {
         },
       }));
       await User.bulkWrite(userBalanceUpdates);
-      // console.log(JSON.stringify(userBalanceUpdates, null, 2));
+      console.log(
+        "User Updates: ",
+        JSON.stringify(userBalanceUpdates, null, 2)
+      );
     }
 
-    console.log(`Bets Updates:`, JSON.stringify(betUpdates, null, 2));
-    console.log(
-      `User Updates:`,
-      JSON.stringify(Object.fromEntries(userUpdates), null, 2)
-    );
+    // console.log(`Bets Updates:`, JSON.stringify(betUpdates, null, 2));
+    // console.log(`User Updates:`, Object.fromEntries(userUpdates));
     console.log(`Bets for event Id: ${eventId} settled successfully.`);
   } catch (error) {
     console.error(`Error settling bets for event Id: ${eventId}:`, error);
