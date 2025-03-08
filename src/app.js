@@ -8,14 +8,15 @@ import http from "http";
 import { Server } from "socket.io";
 import { corsOption } from "./constants/config.js";
 import { errorMiddleware } from "./middlewares/error.js";
+import { Bet } from "./models/bet.js";
 import { connectDB } from "./utils/features.js";
+import { getFormattedTimestamp } from "./utils/helper.js";
 import { getAllMarkets, settleBets } from "./utils/service.js";
 
 import betRoute from "./routes/bet.js";
 import miscRoute from "./routes/misc.js";
 import paymentRoute from "./routes/payment.js";
 import userRoute from "./routes/user.js";
-import { getFormattedTimestamp } from "./utils/helper.js";
 
 config({
   path: "./.env",
@@ -61,7 +62,6 @@ app.get("/", (req, res) => {
 
 const sportsDataCache = {};
 const sportIds = [4];
-let pastEventIds = [];
 
 const fetchSportsData = async () => {
   let updatedData = [];
@@ -126,10 +126,18 @@ const settlingBets = async () => {
     const startTime = Date.now();
     console.log(`⏳ [${getFormattedTimestamp()}] Starting bet settlement...`);
 
-    console.log(`✅ Settling bets for event Ids: ${pastEventIds.join(", ")}`);
+    const pendingBets = await Bet.find({ status: "pending" });
+    const eventIds = [...new Set(pendingBets.map((bet) => bet.eventId))];
+
+    if (eventIds.length === 0) {
+      console.log("⚠️ No valid event IDs found.");
+      return;
+    }
+
+    console.log(`✅ Settling bets for event Ids: ${eventIds.join(", ")}`);
 
     // await settleBets(34088009);
-    await Promise.all(pastEventIds.map((eventId) => settleBets(eventId)));
+    await Promise.all(eventIds.map((eventId) => settleBets(eventId)));
 
     const endTime = Date.now();
     console.log(
@@ -139,23 +147,19 @@ const settlingBets = async () => {
     );
 
     // Fetch events for all sportIds
-    const eventResponses = await Promise.allSettled(
-      sportIds.map((id) =>
-        axios.get(`${API_BASE_URL}/GetMasterbysports?sid=${id}`)
-      )
-    );
+    // const eventResponses = await Promise.allSettled(
+    //   sportIds.map((id) =>
+    //     axios.get(`${API_BASE_URL}/GetMasterbysports?sid=${id}`)
+    //   )
+    // );
 
     // Extract valid event IDs from responses
-    const eventIds = eventResponses
-      .filter((res) => res.status === "fulfilled" && res.value?.data)
-      .flatMap((res) => res.value.data.map((event) => event.event.id))
-      .filter((id) => id !== undefined && id !== null);
+    // const eventIds = eventResponses
+    //   .filter((res) => res.status === "fulfilled" && res.value?.data)
+    //   .flatMap((res) => res.value.data.map((event) => event.event.id))
+    //   .filter((id) => id !== undefined && id !== null);
 
-    if (eventIds.length === 0) {
-      console.log("⚠️ No valid event IDs found.");
-      return;
-    }
-    pastEventIds = eventIds;
+    // pastEventIds = eventIds;
   } catch (error) {
     console.error(
       `❌ [${getFormattedTimestamp()}] Unexpected error in settling Bets:`,

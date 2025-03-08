@@ -6,39 +6,18 @@ import { ErrorHandler } from "../utils/utility-class.js";
 
 const depositStatus = TryCatch(async (req, res, next) => {
   const { userId } = req.query;
-
-  if (!userId) {
-    return next(new ErrorHandler("User ID is required", 400));
-  }
+  if (!userId) return next(new ErrorHandler("User ID is required", 400));
 
   const user = await User.findById(req.user);
-  if (!user) {
-    return next(new ErrorHandler("User not found", 404));
-  }
+  if (!user) return next(new ErrorHandler("User not found", 404));
 
-  if (user.role === "admin") {
-    const depositHistory = await PaymentHistory.find({ userId });
-
-    const message =
-      depositHistory.length > 0
-        ? "Fetched deposit history successfully"
-        : "No deposit history found";
-
-    return res.status(200).json({
-      success: true,
-      message,
-      depositHistory,
-    });
-  }
-
-  if (user._id.toString() !== userId) {
+  if (user.role !== "admin" && user._id.toString() !== userId) {
     return next(
       new ErrorHandler("You can only access your own deposit history", 403)
     );
   }
 
   const depositHistory = await PaymentHistory.find({ userId });
-
   const message =
     depositHistory.length > 0
       ? "Fetched your deposit history successfully"
@@ -53,32 +32,12 @@ const depositStatus = TryCatch(async (req, res, next) => {
 
 const withdrawStatus = TryCatch(async (req, res, next) => {
   const { userId } = req.query;
+  if (!userId) return next(new ErrorHandler("User ID is required", 400));
 
   const user = await User.findById(req.user);
-  if (!user) {
-    return next(new ErrorHandler("User not found", 404));
-  }
+  if (!user) return next(new ErrorHandler("User not found", 404));
 
-  if (!userId) {
-    return next(new ErrorHandler("User ID is required", 400));
-  }
-
-  if (user.role === "admin") {
-    const withdrawHistory = await WithdrawHistory.find({ userId });
-
-    const message =
-      withdrawHistory.length > 0
-        ? "Fetched withdraw history successfully"
-        : "No withdraw history found";
-
-    return res.status(200).json({
-      success: true,
-      message,
-      withdrawHistory,
-    });
-  }
-
-  if (user._id.toString() !== userId) {
+  if (user.role !== "admin" && user._id.toString() !== userId) {
     return next(
       new ErrorHandler("You can only access your own withdraw history", 403)
     );
@@ -216,7 +175,7 @@ const withdrawRequest = TryCatch(async (req, res, next) => {
 const changeWithdrawStatus = TryCatch(async (req, res, next) => {
   const { userId, withdrawId, status } = req.body;
 
-  const validStatuses = ["approved", "rejected", "pending"];
+  const validStatuses = ["approved", "rejected"];
   if (!validStatuses.includes(status))
     return next(new ErrorHandler("Invalid status value", 400));
 
