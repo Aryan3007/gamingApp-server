@@ -39,9 +39,8 @@ const placeBet = TryCatch(async (req, res, next) => {
       match &&
       selection
     )
-  ) {
+  )
     return next(new ErrorHandler("Please provide all required fields", 400));
-  }
 
   const validCategories = ["match odds", "fancy", "bookmaker"];
   const validTypes = ["back", "lay"];
@@ -62,6 +61,25 @@ const placeBet = TryCatch(async (req, res, next) => {
         new ErrorHandler("Stake must be between 100 and 5 Lakh", 400)
       );
   }
+
+  let endpoint, expectedStatus;
+  if (category === "bookmaker") {
+    endpoint = `${API_BASE_URL}/RBookmaker?Mids=${marketId}`;
+    expectedStatus = "ACTIVE";
+  } else if (category === "match odds") {
+    endpoint = `${API_BASE_URL}/RMatchOdds?Mids=${marketId}`;
+    expectedStatus = "OPEN";
+  } else {
+    endpoint = `${API_BASE_URL}/RFancy?Mids=${marketId}`;
+    expectedStatus = "ACTIVE";
+  }
+  const response = await axios.get(endpoint);
+  if (
+    !response.data ||
+    !response.data.length ||
+    response.data[0].status !== expectedStatus
+  )
+    return next(new ErrorHandler("Odds Expired", 400));
 
   const { profit, loss, error } = calculateProfitAndLoss(
     stake,
