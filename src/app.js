@@ -108,6 +108,9 @@ const fetchSportsData = async () => {
       oddsResponses.forEach((oddsResult) => {
         if (oddsResult.status === "fulfilled" && oddsResult.value?.odds) {
           updatedData.push(oddsResult.value);
+          updatedData.sort(
+            (a, b) => new Date(a.event.startDate) - new Date(b.event.startDate)
+          );
         }
       });
       sportsDataCache[sportId] = updatedData;
