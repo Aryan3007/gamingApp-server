@@ -61,10 +61,10 @@ app.get("/", (req, res) => {
 });
 
 const sportsDataCache = {};
-const sportIds = [4];
+// 1 -> Football, 2 -> Tennis, 4 -> Cricket, 7 -> Horse Racing
+const sportIds = [1, 2, 4, 7];
 
 const fetchSportsData = async () => {
-  let updatedData = [];
   try {
     // Fetch events for all sport IDs
     const eventResponses = await Promise.allSettled(
@@ -75,7 +75,7 @@ const fetchSportsData = async () => {
 
     for (const [index, result] of eventResponses.entries()) {
       const sportId = sportIds[index];
-      updatedData[sportId] = [];
+      let updatedData = [];
 
       if (result.status !== "fulfilled") {
         console.error(
@@ -107,15 +107,14 @@ const fetchSportsData = async () => {
       // Process and update only valid results
       oddsResponses.forEach((oddsResult) => {
         if (oddsResult.status === "fulfilled" && oddsResult.value?.odds) {
-          updatedData[sportId].push(oddsResult.value);
+          updatedData.push(oddsResult.value);
         }
       });
+      sportsDataCache[sportId] = updatedData;
     }
-    sportsDataCache[sportIds] = updatedData;
 
     io.emit("sportsData", sportsDataCache);
-    // console.log(sportsDataCache);
-    // console.log("📡 Sports data updated and sent to clients.");
+    console.log(sportsDataCache);
   } catch (error) {
     console.error("❌ Unexpected error in fetchSportsData:", error.message);
   }
