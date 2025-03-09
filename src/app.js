@@ -62,7 +62,8 @@ app.get("/", (req, res) => {
 
 const sportsDataCache = {};
 // 1 -> Football, 2 -> Tennis, 4 -> Cricket, 7 -> Horse Racing
-const sportIds = [1, 2, 4, 7];
+const sportIds = [4];
+// const sportIds = [1, 2, 4, 7];
 
 const fetchSportsData = async () => {
   try {
@@ -109,11 +110,14 @@ const fetchSportsData = async () => {
         if (oddsResult.status === "fulfilled" && oddsResult.value?.odds) {
           updatedData.push(oddsResult.value);
           updatedData.sort(
-            (a, b) => new Date(b.event.startDate) - new Date(a.event.startDate)
+            (a, b) =>
+              new Date(a.event.event.startDate) -
+              new Date(b.event.event.startDate)
           );
         }
       });
       sportsDataCache[sportId] = updatedData;
+      // console.log(JSON.stringify(updatedData, null, 2));
     }
 
     io.emit("sportsData", sportsDataCache);
