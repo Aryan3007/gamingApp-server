@@ -109,7 +109,7 @@ const fetchSportsData = async () => {
         if (oddsResult.status === "fulfilled" && oddsResult.value?.odds) {
           updatedData.push(oddsResult.value);
           updatedData.sort(
-            (a, b) => new Date(a.event.startDate) - new Date(b.event.startDate)
+            (a, b) => new Date(b.event.startDate) - new Date(a.event.startDate)
           );
         }
       });
@@ -132,7 +132,7 @@ const settlingBets = async () => {
     const eventIds = [...new Set(pendingBets.map((bet) => bet.eventId))];
 
     if (eventIds.length === 0) {
-      console.log("⚠️ No valid event IDs found.");
+      console.log("No pending Event IDs found!");
       return;
     }
 
