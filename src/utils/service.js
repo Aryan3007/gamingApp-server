@@ -26,11 +26,13 @@ const fetchOddsInBatches = async (baseUrl, ids) => {
 };
 
 const getAllMarkets = TryCatch(async (req, res, next) => {
-  const { eventId } = req.query;
+  const { eventId, sportId } = req.query;
   if (!eventId) return next(new ErrorHandler("EventId is Required", 400));
 
   // Fetch all events
-  const eventRes = await axios.get(`${API_BASE_URL}/GetMasterbysports?sid=4`);
+  const eventRes = await axios.get(
+    `${API_BASE_URL}/GetMasterbysports?sid=${sportId}`
+  );
   const allEvents = eventRes.data || [];
   const eventDetail =
     allEvents.find((event) => event.event.id == eventId) || null;
@@ -289,4 +291,3 @@ const settleBets = async (eventId) => {
 };
 
 export { getAllMarkets, settleBets };
-
