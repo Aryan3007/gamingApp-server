@@ -79,7 +79,7 @@ const getAllMarkets = TryCatch(async (req, res, next) => {
           odds.runners[runnerIndex][type][0].price =
             Math.floor(
               matchOddsData[0].runners[runnerIndex][type][0].price * 100
-            ) % 100;
+            ) - 100;
           odds.runners[runnerIndex][type][0].size =
             matchOddsData[0].runners[runnerIndex][type][0].size * multiplier;
         }
@@ -289,3 +289,4 @@ const settleBets = async (eventId) => {
 };
 
 export { getAllMarkets, settleBets };
+

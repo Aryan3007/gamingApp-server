@@ -114,7 +114,7 @@ const fetchSportsData = async () => {
     }
 
     io.emit("sportsData", sportsDataCache);
-    console.log(sportsDataCache);
+    // console.log(sportsDataCache);
   } catch (error) {
     console.error("❌ Unexpected error in fetchSportsData:", error.message);
   }
