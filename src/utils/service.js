@@ -28,6 +28,7 @@ const fetchOddsInBatches = async (baseUrl, ids) => {
 const getAllMarkets = TryCatch(async (req, res, next) => {
   const { eventId, sportId } = req.query;
   if (!eventId) return next(new ErrorHandler("EventId is Required", 400));
+  if (!sportId) return next(new ErrorHandler("SportId is Required", 400));
 
   // Fetch all events
   const eventRes = await axios.get(
