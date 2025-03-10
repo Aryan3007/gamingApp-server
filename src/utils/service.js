@@ -5,6 +5,7 @@ import { Bet } from "../models/bet.js";
 import { Margin } from "../models/margin.js";
 import { User } from "../models/user.js";
 import { ErrorHandler } from "./utility-class.js";
+import { calculateProfitAndLoss } from "./helper.js";
 
 const chunkArray = (array, size) => {
   return Array.from({ length: Math.ceil(array.length / size) }, (_, index) =>
@@ -145,6 +146,7 @@ const settleBets = async (eventId) => {
     const bookmakerResults = formatResults(bookmakerRes);
     const fancyResults = formatResults(fancyRes);
 
+    console.log(`For Event Id: ${eventId}`);
     console.log("Odds: ", JSON.stringify(Object.fromEntries(matchOddsResults)));
     console.log("BM: ", JSON.stringify(Object.fromEntries(bookmakerResults)));
     console.log("Fancy: ", JSON.stringify(Object.fromEntries(fancyResults)));
@@ -250,12 +252,14 @@ const settleBets = async (eventId) => {
       });
 
       // Update user balance
-      const balanceChange = isWinningBet ? payout - stake : -stake;
-      if (category === "fancy") {
-        if (isWinningBet)
-          userUpdates.set(userId, (userUpdates.get(userId) || 0) + payout);
-      } else
-        userUpdates.set(userId, (userUpdates.get(userId) || 0) + balanceChange);
+      const { profit, loss } = calculateProfitAndLoss(
+        stake,
+        odds,
+        type,
+        category
+      );
+      const balanceChange = isWinningBet ? profit : loss;
+      userUpdates.set(userId, (userUpdates.get(userId) || 0) + balanceChange);
     }
 
     // Bulk update bets

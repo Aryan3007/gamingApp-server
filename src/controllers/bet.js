@@ -89,60 +89,49 @@ const placeBet = TryCatch(async (req, res, next) => {
   );
   if (error) return next(new ErrorHandler(error, 400));
 
-  if (category === "fancy") {
+  const margin = await Margin.findOne({ userId: user._id, eventId, marketId })
+    .sort({ createdAt: -1 })
+    .lean();
+
+  if (!margin) {
     if (user.amount < Math.abs(loss))
       return next(new ErrorHandler("Insufficient balance", 400));
 
     user.amount += loss;
     await user.save();
+
+    await Margin.create({
+      userId: user._id,
+      eventId,
+      marketId,
+      selectionId,
+      profit: type === "back" ? profit : loss,
+      loss: type === "back" ? loss : profit,
+    });
   } else {
-    const margin = await Margin.findOne({ userId: user._id, eventId, marketId })
-      .sort({ createdAt: -1 })
-      .lean();
+    const { newProfit, newLoss } = calculateNewMargin(
+      margin,
+      selectionId,
+      type,
+      profit,
+      loss
+    );
 
-    if (!margin) {
-      if (user.amount < Math.abs(loss))
-        return next(new ErrorHandler("Insufficient balance", 400));
+    const oldNegative = Math.min(margin.profit, margin.loss, 0);
+    const newNegative = Math.min(newProfit, newLoss, 0);
 
-      user.amount += loss;
-      await user.save();
+    user.amount += Math.abs(oldNegative) + newNegative;
+    await user.save();
 
-      await Margin.create({
-        userId: user._id,
-        eventId,
-        marketId,
-        selectionId,
-        profit: type === "back" ? profit : loss,
-        loss: type === "back" ? loss : profit,
-      });
-    } else {
-      const { newProfit, newLoss } = calculateNewMargin(
-        margin,
-        selectionId,
-        type,
-        profit,
-        loss
-      );
-
-      const oldNegative = Math.min(margin.profit, margin.loss, 0);
-      const newNegative = Math.min(newProfit, newLoss, 0);
-
-      user.amount += Math.abs(oldNegative) + newNegative;
-      await user.save();
-
-      await Margin.create({
-        userId: user._id,
-        eventId,
-        marketId,
-        selectionId,
-        profit: margin.selectionId === selectionId ? newProfit : newLoss,
-        loss: margin.selectionId === selectionId ? newLoss : newProfit,
-      });
-    }
+    await Margin.create({
+      userId: user._id,
+      eventId,
+      marketId,
+      selectionId,
+      profit: margin.selectionId === selectionId ? newProfit : newLoss,
+      loss: margin.selectionId === selectionId ? newLoss : newProfit,
+    });
   }
-
-  if (category === "match odds") payout = odds * stake;
-  else payout = stake + profit;
 
   const newBet = await Bet.create({
     userId: user._id,
@@ -156,7 +145,7 @@ const placeBet = TryCatch(async (req, res, next) => {
     odds,
     category,
     type,
-    payout,
+    payout: stake + profit,
   });
 
   return res.status(201).json({
