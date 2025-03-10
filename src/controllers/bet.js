@@ -112,8 +112,8 @@ const placeBet = TryCatch(async (req, res, next) => {
         eventId,
         marketId,
         selectionId,
-        profit,
-        loss,
+        profit: type === "back" ? profit : loss,
+        loss: type === "back" ? loss : profit,
       });
     } else {
       const { newProfit, newLoss } = calculateNewMargin(

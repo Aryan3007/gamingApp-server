@@ -55,14 +55,10 @@ const getAllMarkets = TryCatch(async (req, res, next) => {
   const fancyIds = fancyData.map((f) => f.market.id);
 
   // Fetch odds
-  const bookMakerOddsRes = await fetchOddsInBatches(
-    `${API_BASE_URL}/RBookmaker`,
-    bookmakerIds
-  );
-  const fancyOddsRes = await fetchOddsInBatches(
-    `${API_BASE_URL}/RFancy`,
-    fancyIds
-  );
+  const [bookMakerOddsRes, fancyOddsRes] = await Promise.all([
+    fetchOddsInBatches(`${API_BASE_URL}/RBookmaker`, bookmakerIds),
+    fetchOddsInBatches(`${API_BASE_URL}/RFancy`, fancyIds),
+  ]);
 
   // Map odds back to their respective markets
   const getBookmaker = bookmakerData.map((b) => {
