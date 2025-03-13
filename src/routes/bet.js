@@ -6,6 +6,7 @@ import {
   getBets,
   getFancyExposure,
   getMargins,
+  getTotalExposure,
   placeBet,
 } from "../controllers/bet.js";
 import { adminOnly, isAuthenticated } from "../middlewares/auth.js";
@@ -23,6 +24,8 @@ app.get("/margins", getMargins);
 app.get("/allmargins", getAllMargins);
 
 app.get("/fancy-exposure", getFancyExposure);
+
+app.get("/total-exposure", getTotalExposure);
 
 app.get("/bets", adminOnly, getBets);
 

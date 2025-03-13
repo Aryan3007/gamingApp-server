@@ -441,6 +441,61 @@ const getFancyExposure = TryCatch(async (req, res, next) => {
   });
 });
 
+const getTotalExposure = TryCatch(async (req, res, next) => {
+  const user = await User.findById(req.user);
+  if (!user) return next(new ErrorHandler("User not found", 404));
+
+  const marginsResponse = await getAllMargins(req, res, next);
+  if (!marginsResponse || !marginsResponse.success) {
+    return next(new ErrorHandler("Failed to fetch margins", 500));
+  }
+
+  const margins = marginsResponse.margins;
+  let totalExposure = 0;
+
+  for (const margin of margins) {
+    let maxLoss = 0;
+    if (margin.profit < 0 && margin.loss > 0) {
+      maxLoss += Math.abs(margin.profit);
+    } else if (margin.profit < 0 && margin.loss < 0) {
+      maxLoss += Math.max(Math.abs(margin.profit), Math.abs(margin.loss));
+    } else if (margin.loss < 0) {
+      maxLoss += Math.abs(margin.loss);
+    }
+    totalExposure += maxLoss;
+  }
+
+  const bets = await Bet.find({
+    userId: user._id,
+    status: "pending",
+    category: "fancy",
+  });
+
+  if (bets.length > 0) {
+    const eventIds = [...new Set(bets.map((bet) => bet.eventId))];
+
+    for (const eventId of eventIds) {
+      const fancyExposureResponse = await getFancyExposure(
+        { query: { eventId } },
+        res,
+        next
+      );
+
+      const marketExposure = fancyExposureResponse.data.marketExposure || {};
+      totalExposure += Object.values(marketExposure).reduce(
+        (sum, value) => sum + value,
+        0
+      );
+    }
+  }
+
+  return res.status(200).json({
+    success: true,
+    message: "Total exposure fetched successfully",
+    exposure: totalExposure,
+  });
+});
+
 export {
   betTransactions,
   changeBetStatus,
@@ -449,4 +504,5 @@ export {
   getFancyExposure,
   getMargins,
   placeBet,
+  getTotalExposure,
 };
