@@ -81,48 +81,80 @@ const placeBet = TryCatch(async (req, res, next) => {
   );
   if (error) return next(new ErrorHandler(error, 400));
 
-  const margin = await Margin.findOne({ userId: user._id, eventId, marketId })
-    .sort({ createdAt: -1 })
-    .lean();
+  if (category === "fancy") {
+    const margins = await Margin.find({ userId: user._id, eventId, marketId });
 
-  if (!margin) {
-    if (user.amount < Math.abs(loss))
-      return next(new ErrorHandler("Insufficient balance", 400));
+    let exposure = 0;
+    let addition = 0;
 
-    user.amount += loss;
+    if (!margins.length) {
+      if (user.amount < Math.abs(loss))
+        return next(new ErrorHandler("Insufficient balance", 400));
+
+      user.amount += loss;
+    } else {
+      margins.forEach(({ profit, loss }) => {
+        exposure += profit;
+        if (loss < 0) exposure += loss;
+        addition += Math.abs(loss);
+      });
+
+      user.amount += addition + exposure;
+    }
     await user.save();
 
     await Margin.create({
       userId: user._id,
       eventId,
       marketId,
-      selectionId: category !== "fancy" ? selectionId : fancySelectionID,
-      profit: type === "back" ? profit : loss,
-      loss: type === "back" ? loss : profit,
+      selectionId: fancySelectionID,
+      profit,
+      loss,
     });
   } else {
-    const { newProfit, newLoss } = calculateNewMargin(
-      margin,
-      selectionId,
-      type,
-      profit,
-      loss
-    );
+    const margin = await Margin.findOne({ userId: user._id, eventId, marketId })
+      .sort({ createdAt: -1 })
+      .lean();
 
-    const oldNegative = Math.min(margin.profit, margin.loss, 0);
-    const newNegative = Math.min(newProfit, newLoss, 0);
+    if (!margin) {
+      if (user.amount < Math.abs(loss))
+        return next(new ErrorHandler("Insufficient balance", 400));
 
-    user.amount += Math.abs(oldNegative) + newNegative;
-    await user.save();
+      user.amount += loss;
+      await user.save();
 
-    await Margin.create({
-      userId: user._id,
-      eventId,
-      marketId,
-      selectionId: category !== "fancy" ? selectionId : fancySelectionID,
-      profit: margin.selectionId === selectionId ? newProfit : newLoss,
-      loss: margin.selectionId === selectionId ? newLoss : newProfit,
-    });
+      await Margin.create({
+        userId: user._id,
+        eventId,
+        marketId,
+        selectionId,
+        profit: type === "back" ? profit : loss,
+        loss: type === "back" ? loss : profit,
+      });
+    } else {
+      const { newProfit, newLoss } = calculateNewMargin(
+        margin,
+        selectionId,
+        type,
+        profit,
+        loss
+      );
+
+      const oldNegative = Math.min(margin.profit, margin.loss, 0);
+      const newNegative = Math.min(newProfit, newLoss, 0);
+
+      user.amount += Math.abs(oldNegative) + newNegative;
+      await user.save();
+
+      await Margin.create({
+        userId: user._id,
+        eventId,
+        marketId,
+        selectionId,
+        profit: margin.selectionId === selectionId ? newProfit : newLoss,
+        loss: margin.selectionId === selectionId ? newLoss : newProfit,
+      });
+    }
   }
 
   const newBet = await Bet.create({
@@ -336,11 +368,38 @@ const getAllMargins = TryCatch(async (req, res, next) => {
   });
 });
 
+const getFancyExposure = TryCatch(async (req, res, next) => {
+  const user = await User.findById(req.user);
+  if (!user) return next(new ErrorHandler("User not found", 404));
+
+  const { eventId } = req.query;
+  if (!eventId) return next(new ErrorHandler("Event ID is required", 400));
+
+  const margins = await Margin.find({ userId: user._id, eventId });
+
+  const marketExposure = {};
+
+  margins.forEach(({ marketId, profit, loss }) => {
+    if (!marketExposure[marketId]) {
+      marketExposure[marketId] = 0;
+    }
+    marketExposure[marketId] += profit;
+    if (loss < 0) marketExposure[marketId] += loss;
+  });
+
+  return res.status(200).json({
+    success: true,
+    message: "Fancy exposure fetched successfully",
+    marketExposure,
+  });
+});
+
 export {
   betTransactions,
   changeBetStatus,
   getAllMargins,
   getBets,
+  getFancyExposure,
   getMargins,
   placeBet,
 };

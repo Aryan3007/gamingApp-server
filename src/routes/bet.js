@@ -4,6 +4,7 @@ import {
   changeBetStatus,
   getAllMargins,
   getBets,
+  getFancyExposure,
   getMargins,
   placeBet,
 } from "../controllers/bet.js";
@@ -20,6 +21,8 @@ app.get("/transactions", betTransactions);
 app.get("/margins", getMargins);
 
 app.get("/allmargins", getAllMargins);
+
+app.get("/fancy-exposure", getFancyExposure);
 
 app.get("/bets", adminOnly, getBets);
 
