@@ -23,7 +23,7 @@ const placeBet = TryCatch(async (req, res, next) => {
     category,
     type,
   } = req.body;
-  let fancySelectionID = type === "back" ? `${marketId}-Y` : `${marketId}-N`;
+  let fancySelectionID = type === "back" ? `1` : `2`;
 
   category = category?.toLowerCase().trim();
   type = type?.toLowerCase().trim();
@@ -108,8 +108,8 @@ const placeBet = TryCatch(async (req, res, next) => {
       eventId,
       marketId,
       selectionId: fancySelectionID,
-      profit,
-      loss,
+      profit: type === "back" ? profit : loss,
+      loss: type === "back" ? loss : profit,
     });
   } else {
     const margin = await Margin.findOne({ userId: user._id, eventId, marketId })
@@ -377,15 +377,37 @@ const getFancyExposure = TryCatch(async (req, res, next) => {
 
   const margins = await Margin.find({ userId: user._id, eventId });
 
-  const marketExposure = {};
-
-  margins.forEach(({ marketId, profit, loss }) => {
-    if (!marketExposure[marketId]) {
-      marketExposure[marketId] = 0;
+  const marketMargins = {};
+  for (const margin of margins) {
+    if (!marketMargins[margin.marketId]) {
+      marketMargins[margin.marketId] = [];
     }
-    marketExposure[marketId] += profit;
-    if (loss < 0) marketExposure[marketId] += loss;
-  });
+    marketMargins[margin.marketId].push(margin);
+  }
+
+  const marketExposure = {};
+  for (const [marketId, margins] of Object.entries(marketMargins)) {
+    const selectionGroups = { 1: [], 2: [] };
+
+    for (const margin of margins) {
+      if (margin.selectionId === "1" || margin.selectionId === "2") {
+        selectionGroups[margin.selectionId].push(margin);
+      }
+    }
+
+    let exposure = 0;
+    const count1 = selectionGroups["1"].length;
+    const count2 = selectionGroups["2"].length;
+    const minCount = Math.min(count1, count2);
+
+    for (const margin of selectionGroups["2"]) exposure += margin.loss;
+    for (const margin of selectionGroups["1"]) exposure += margin.profit;
+
+    for (let i = 0; i < minCount; i++)
+      exposure += selectionGroups["2"][i].profit;
+
+    marketExposure[marketId] = exposure;
+  }
 
   return res.status(200).json({
     success: true,
