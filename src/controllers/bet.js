@@ -495,7 +495,7 @@ const getTotalExposure = TryCatch(async (req, res, next) => {
   const eventIds = [...new Set(bets.map((bet) => bet.eventId))];
   for (const eventId of eventIds) {
     const fancyExposureResponse = await getFancyExposure(
-      { query: { eventId } },
+      { ...req, query: { eventId } },
       res,
       next
     );
