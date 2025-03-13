@@ -510,7 +510,7 @@ const getTotalExposure = TryCatch(async (req, res, next) => {
   for (const eventId of eventIds) {
     const marketExposure = await calculateFancyExposure(user._id, eventId);
     totalExposure += Object.values(marketExposure).reduce(
-      (sum, value) => sum + value,
+      (sum, value) => sum + Math.abs(value),
       0
     );
   }
