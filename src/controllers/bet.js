@@ -81,6 +81,40 @@ const placeBet = TryCatch(async (req, res, next) => {
   if (error) return next(new ErrorHandler(error, 400));
 
   if (category === "fancy") {
+    const margins = await Margin.find({ userId: user._id, eventId, marketId });
+    const selectionGroups = { 1: [], 2: [] };
+
+    for (const margin of margins) {
+      if (margin.selectionId === "1" || margin.selectionId === "2") {
+        selectionGroups[margin.selectionId].push(margin);
+      }
+    }
+
+    let exposure = 0;
+    const usedBacks = new Set();
+    const usedLays = new Set();
+
+    for (const back of selectionGroups["1"]) {
+      for (const lay of selectionGroups["2"]) {
+        if (
+          !usedBacks.has(back) &&
+          !usedLays.has(lay) &&
+          back.fancyNumber <= lay.fancyNumber
+        ) {
+          exposure += lay.profit;
+          usedBacks.add(back);
+          usedLays.add(lay);
+          break;
+        }
+      }
+    }
+
+    if (user.amount + loss + exposure < 0)
+      return next(new ErrorHandler("Insufficient funds", 400));
+
+    user.amount += loss + exposure;
+    await user.save();
+
     await Margin.create({
       userId: user._id,
       eventId,
