@@ -1,5 +1,5 @@
 import axios from "axios";
-import { TryCatch } from "../middlewares/error";
+import { TryCatch } from "../middlewares/error.js";
 
 const cricketScore = TryCatch(async (req, res, next) => {
   const { eventId } = req.query;
