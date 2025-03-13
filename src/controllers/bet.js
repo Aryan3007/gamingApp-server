@@ -379,14 +379,8 @@ const getAllMargins = TryCatch(async (req, res, next) => {
   });
 });
 
-const getFancyExposure = TryCatch(async (req, res, next) => {
-  const user = await User.findById(req.user);
-  if (!user) return next(new ErrorHandler("User not found", 404));
-
-  const { eventId } = req.query;
-  if (!eventId) return next(new ErrorHandler("Event ID is required", 400));
-
-  const margins = await Margin.find({ userId: user._id, eventId });
+const calculateFancyExposure = async (userId, eventId) => {
+  const margins = await Margin.find({ userId, eventId });
 
   const marketMargins = {};
   for (const margin of margins) {
@@ -431,6 +425,18 @@ const getFancyExposure = TryCatch(async (req, res, next) => {
 
     marketExposure[marketId] = exposure;
   }
+
+  return marketExposure;
+};
+
+const getFancyExposure = TryCatch(async (req, res, next) => {
+  const user = await User.findById(req.user);
+  if (!user) return next(new ErrorHandler("User not found", 404));
+
+  const { eventId } = req.query;
+  if (!eventId) return next(new ErrorHandler("Event ID is required", 400));
+
+  const marketExposure = await calculateFancyExposure(user._id, eventId);
 
   return res.status(200).json({
     success: true,
@@ -494,14 +500,7 @@ const getTotalExposure = TryCatch(async (req, res, next) => {
 
   const eventIds = [...new Set(bets.map((bet) => bet.eventId))];
   for (const eventId of eventIds) {
-    const fancyExposureResponse = await getFancyExposure(
-      { ...req, query: { eventId } },
-      res,
-      next
-    );
-
-    const marketExposure = fancyExposureResponse.data.marketExposure || {};
-
+    const marketExposure = await calculateFancyExposure(user._id, eventId);
     totalExposure += Object.values(marketExposure).reduce(
       (sum, value) => sum + value,
       0
