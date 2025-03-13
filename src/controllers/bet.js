@@ -452,13 +452,14 @@ const getTotalExposure = TryCatch(async (req, res, next) => {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  const margins = await Margin.find({
+  const nonFancyMargins = await Margin.find({
     userId: user._id,
     createdAt: { $gte: today },
+    fancyNumber: null,
   });
 
   const latestMargins = {};
-  for (const margin of margins) {
+  for (const margin of nonFancyMargins) {
     if (!latestMargins[margin.marketId]) {
       latestMargins[margin.marketId] = margin;
     }
@@ -474,12 +475,19 @@ const getTotalExposure = TryCatch(async (req, res, next) => {
   const bookmakerData = bookmakerResponse.data || [];
 
   const filteredMargins = [
-    ...matchOddsData.map((market) => latestMargins[market.marketId]),
-    ...bookmakerData.map((market) => latestMargins[market.marketId]),
-  ].filter(Boolean);
+    ...(matchOddsData.length
+      ? matchOddsData.map((market) => latestMargins[market.marketId])
+      : []),
+    ...(bookmakerData.length
+      ? bookmakerData.map((market) => latestMargins[market.marketId])
+      : []),
+  ];
 
   let totalExposure = 0;
-  for (const margin of filteredMargins) {
+  const margins = filteredMargins.length
+    ? filteredMargins
+    : Object.values(latestMargins);
+  for (const margin of margins) {
     let maxLoss = 0;
     if (margin.profit < 0 && margin.loss > 0)
       maxLoss += Math.abs(margin.profit);
