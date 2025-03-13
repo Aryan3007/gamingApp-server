@@ -19,6 +19,10 @@ const schema = new Schema(
       type: String,
       required: true,
     },
+    fancyNumber: {
+      type: String,
+      default: null,
+    },
     profit: {
       type: Number,
       required: true,

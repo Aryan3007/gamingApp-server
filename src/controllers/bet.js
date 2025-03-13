@@ -23,7 +23,6 @@ const placeBet = TryCatch(async (req, res, next) => {
     category,
     type,
   } = req.body;
-  let fancySelectionID = type === "back" ? `1` : `2`;
 
   category = category?.toLowerCase().trim();
   type = type?.toLowerCase().trim();
@@ -82,32 +81,12 @@ const placeBet = TryCatch(async (req, res, next) => {
   if (error) return next(new ErrorHandler(error, 400));
 
   if (category === "fancy") {
-    const margins = await Margin.find({ userId: user._id, eventId, marketId });
-
-    let exposure = 0;
-    let addition = 0;
-
-    if (!margins.length) {
-      if (user.amount < Math.abs(loss))
-        return next(new ErrorHandler("Insufficient balance", 400));
-
-      user.amount += loss;
-    } else {
-      margins.forEach(({ profit, loss }) => {
-        exposure += profit;
-        if (loss < 0) exposure += loss;
-        addition += Math.abs(loss);
-      });
-
-      user.amount += addition + exposure;
-    }
-    await user.save();
-
     await Margin.create({
       userId: user._id,
       eventId,
       marketId,
-      selectionId: fancySelectionID,
+      fancyNumber,
+      selectionId: type === "back" ? `1` : `2`,
       profit: type === "lay" ? profit : loss,
       loss: type === "lay" ? loss : profit,
     });
@@ -396,15 +375,27 @@ const getFancyExposure = TryCatch(async (req, res, next) => {
     }
 
     let exposure = 0;
-    const count1 = selectionGroups["1"].length;
-    const count2 = selectionGroups["2"].length;
-    const minCount = Math.min(count1, count2);
 
     for (const margin of selectionGroups["2"]) exposure += margin.loss;
     for (const margin of selectionGroups["1"]) exposure += margin.profit;
 
-    for (let i = 0; i < minCount; i++)
-      exposure += selectionGroups["2"][i].profit;
+    const usedBacks = new Set();
+    const usedLays = new Set();
+
+    for (const back of selectionGroups["1"]) {
+      for (const lay of selectionGroups["2"]) {
+        if (
+          !usedBacks.has(back) &&
+          !usedLays.has(lay) &&
+          back.fancyNumber <= lay.fancyNumber
+        ) {
+          exposure += lay.profit;
+          usedBacks.add(back);
+          usedLays.add(lay);
+          break;
+        }
+      }
+    }
 
     marketExposure[marketId] = exposure;
   }
