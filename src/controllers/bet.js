@@ -456,7 +456,7 @@ const getTotalExposure = TryCatch(async (req, res, next) => {
     userId: user._id,
     createdAt: { $gte: today },
     fancyNumber: null,
-  });
+  }).sort({ createdAt: -1 });
 
   const latestMargins = {};
   for (const margin of nonFancyMargins) {
