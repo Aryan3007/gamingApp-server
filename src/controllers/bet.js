@@ -353,15 +353,13 @@ const getAllMargins = TryCatch(async (req, res, next) => {
   }
 
   const marketIds = Object.keys(latestMargins);
-  const matchOddsResponse = await axios.get(
-    `${API_BASE_URL}/RMatchOdds?Mids=${marketIds.join(",")}`
-  );
-  const matchOddsData = matchOddsResponse.data;
+  const [matchOddsResponse, bookmakerResponse] = await Promise.all([
+    axios.get(`${API_BASE_URL}/RMatchOdds?Mids=${marketIds.join(",")}`),
+    axios.get(`${API_BASE_URL}/RBookmaker?Mids=${marketIds.join(",")}`),
+  ]);
 
-  const bookmakerResponse = await axios.get(
-    `${API_BASE_URL}/RBookmaker?Mids=${marketIds.join(",")}`
-  );
-  const bookmakerData = bookmakerResponse.data;
+  const matchOddsData = matchOddsResponse.data || [];
+  const bookmakerData = bookmakerResponse.data || [];
 
   const filteredMargins = [
     ...(matchOddsData.length
@@ -445,19 +443,41 @@ const getTotalExposure = TryCatch(async (req, res, next) => {
   const user = await User.findById(req.user);
   if (!user) return next(new ErrorHandler("User not found", 404));
 
-  const marginsResponse = await getAllMargins(req, res, next);
-  if (!marginsResponse || !marginsResponse.success) {
-    return next(new ErrorHandler("Failed to fetch margins", 500));
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const margins = await Margin.find({
+    userId: user._id,
+    createdAt: { $gte: today },
+  });
+
+  const latestMargins = {};
+  for (const margin of margins) {
+    if (!latestMargins[margin.marketId]) {
+      latestMargins[margin.marketId] = margin;
+    }
   }
 
-  const margins = marginsResponse.margins;
-  let totalExposure = 0;
+  const marketIds = Object.keys(latestMargins);
+  const [matchOddsResponse, bookmakerResponse] = await Promise.all([
+    axios.get(`${API_BASE_URL}/RMatchOdds?Mids=${marketIds.join(",")}`),
+    axios.get(`${API_BASE_URL}/RBookmaker?Mids=${marketIds.join(",")}`),
+  ]);
 
-  for (const margin of margins) {
+  const matchOddsData = matchOddsResponse.data || [];
+  const bookmakerData = bookmakerResponse.data || [];
+
+  const filteredMargins = [
+    ...matchOddsData.map((market) => latestMargins[market.marketId]),
+    ...bookmakerData.map((market) => latestMargins[market.marketId]),
+  ].filter(Boolean);
+
+  let totalExposure = 0;
+  for (const margin of filteredMargins) {
     let maxLoss = 0;
-    if (margin.profit < 0 && margin.loss > 0) {
+    if (margin.profit < 0 && margin.loss > 0)
       maxLoss += Math.abs(margin.profit);
-    } else if (margin.profit < 0 && margin.loss < 0) {
+    if (margin.profit < 0 && margin.loss < 0) {
       maxLoss += Math.max(Math.abs(margin.profit), Math.abs(margin.loss));
     } else if (margin.loss < 0) {
       maxLoss += Math.abs(margin.loss);
@@ -469,24 +489,23 @@ const getTotalExposure = TryCatch(async (req, res, next) => {
     userId: user._id,
     status: "pending",
     category: "fancy",
+    createdAt: { $gte: today },
   });
 
-  if (bets.length > 0) {
-    const eventIds = [...new Set(bets.map((bet) => bet.eventId))];
+  const eventIds = [...new Set(bets.map((bet) => bet.eventId))];
+  for (const eventId of eventIds) {
+    const fancyExposureResponse = await getFancyExposure(
+      { query: { eventId } },
+      res,
+      next
+    );
 
-    for (const eventId of eventIds) {
-      const fancyExposureResponse = await getFancyExposure(
-        { query: { eventId } },
-        res,
-        next
-      );
+    const marketExposure = fancyExposureResponse.data.marketExposure || {};
 
-      const marketExposure = fancyExposureResponse.data.marketExposure || {};
-      totalExposure += Object.values(marketExposure).reduce(
-        (sum, value) => sum + value,
-        0
-      );
-    }
+    totalExposure += Object.values(marketExposure).reduce(
+      (sum, value) => sum + value,
+      0
+    );
   }
 
   return res.status(200).json({
@@ -503,6 +522,6 @@ export {
   getBets,
   getFancyExposure,
   getMargins,
-  placeBet,
   getTotalExposure,
+  placeBet,
 };
