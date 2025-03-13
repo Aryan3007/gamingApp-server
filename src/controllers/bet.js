@@ -62,23 +62,15 @@ const placeBet = TryCatch(async (req, res, next) => {
       );
   }
 
-  let endpoint, expectedStatus;
-  if (category === "bookmaker") {
+  let endpoint;
+  if (category === "bookmaker")
     endpoint = `${API_BASE_URL}/RBookmaker?Mids=${marketId}`;
-    expectedStatus = "ACTIVE";
-  } else if (category === "match odds") {
+  else if (category === "match odds")
     endpoint = `${API_BASE_URL}/RMatchOdds?Mids=${marketId}`;
-    expectedStatus = "OPEN";
-  } else {
-    endpoint = `${API_BASE_URL}/RFancy?Mids=${marketId}`;
-    expectedStatus = "ACTIVE";
-  }
+  else endpoint = `${API_BASE_URL}/RFancy?Mids=${marketId}`;
+
   const response = await axios.get(endpoint);
-  if (
-    !response.data ||
-    !response.data.length ||
-    response.data[0].status !== expectedStatus
-  )
+  if (!response.data || !response.data.length)
     return next(new ErrorHandler("Odds Expired", 400));
 
   const { profit, loss, error } = calculateProfitAndLoss(

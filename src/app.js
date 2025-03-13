@@ -17,6 +17,7 @@ import betRoute from "./routes/bet.js";
 import miscRoute from "./routes/misc.js";
 import paymentRoute from "./routes/payment.js";
 import userRoute from "./routes/user.js";
+import scoreRoute from "./routes/score.js";
 
 config({
   path: "./.env",
@@ -54,6 +55,7 @@ app.use("/api/v1/user", userRoute);
 app.use("/api/v1/payment", paymentRoute);
 app.use("/api/v1/bet", betRoute);
 app.use("/api/v1/misc", miscRoute);
+app.use("api/v1/scores", scoreRoute);
 app.get("/api/v1/getMarkets", getAllMarkets);
 
 app.get("/", (req, res) => {
