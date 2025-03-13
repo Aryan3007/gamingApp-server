@@ -108,8 +108,8 @@ const placeBet = TryCatch(async (req, res, next) => {
       eventId,
       marketId,
       selectionId: fancySelectionID,
-      profit: type === "back" ? profit : loss,
-      loss: type === "back" ? loss : profit,
+      profit: type === "lay" ? profit : loss,
+      loss: type === "lay" ? loss : profit,
     });
   } else {
     const margin = await Margin.findOne({ userId: user._id, eventId, marketId })
