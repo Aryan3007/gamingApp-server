@@ -177,7 +177,6 @@ const settleBets = async (eventId) => {
         type,
         fancyNumber,
         stake,
-        payout,
       } = bet;
       let isWinningBet = false;
       let isMarketResultAvailable = false;
