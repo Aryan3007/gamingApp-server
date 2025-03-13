@@ -23,7 +23,7 @@ const placeBet = TryCatch(async (req, res, next) => {
     category,
     type,
   } = req.body;
-  let payout = 0;
+  let fancySelectionID = type === "back" ? `${marketId}-Y` : `${marketId}-N`;
 
   category = category?.toLowerCase().trim();
   type = type?.toLowerCase().trim();
@@ -104,7 +104,7 @@ const placeBet = TryCatch(async (req, res, next) => {
       userId: user._id,
       eventId,
       marketId,
-      selectionId,
+      selectionId: category !== "fancy" ? selectionId : fancySelectionID,
       profit: type === "back" ? profit : loss,
       loss: type === "back" ? loss : profit,
     });
@@ -127,7 +127,7 @@ const placeBet = TryCatch(async (req, res, next) => {
       userId: user._id,
       eventId,
       marketId,
-      selectionId,
+      selectionId: category !== "fancy" ? selectionId : fancySelectionID,
       profit: margin.selectionId === selectionId ? newProfit : newLoss,
       loss: margin.selectionId === selectionId ? newLoss : newProfit,
     });
