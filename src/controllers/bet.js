@@ -82,6 +82,15 @@ const placeBet = TryCatch(async (req, res, next) => {
 
   if (category === "fancy") {
     const margins = await Margin.find({ userId: user._id, eventId, marketId });
+    const obj = {
+      userId: user._id,
+      eventId,
+      marketId,
+      fancyNumber,
+      selectionId: type === "back" ? `1` : `2`,
+      profit: type === "lay" ? profit : loss,
+      loss: type === "lay" ? loss : profit,
+    };
     const selectionGroups = { 1: [], 2: [] };
 
     for (const margin of margins) {
@@ -89,6 +98,7 @@ const placeBet = TryCatch(async (req, res, next) => {
         selectionGroups[margin.selectionId].push(margin);
       }
     }
+    selectionGroups[obj.selectionId].push(obj);
 
     let exposure = 0;
     const usedBacks = new Set();
@@ -101,7 +111,8 @@ const placeBet = TryCatch(async (req, res, next) => {
           !usedLays.has(lay) &&
           back.fancyNumber <= lay.fancyNumber
         ) {
-          exposure += lay.profit + Math.abs(lay.loss);
+          exposure +=
+            lay.profit + Math.min(Math.abs(lay.loss), Math.abs(back.loss));
           usedBacks.add(back);
           usedLays.add(lay);
           break;
@@ -409,6 +420,9 @@ const calculateFancyExposure = async (userId, eventId) => {
     for (const margin of selectionGroups["2"]) exposure += margin.loss;
     for (const margin of selectionGroups["1"]) exposure += margin.profit;
 
+    // console.log(selectionGroups["1"]);
+    // console.log(selectionGroups["2"]);
+
     const usedBacks = new Set();
     const usedLays = new Set();
 
@@ -419,7 +433,8 @@ const calculateFancyExposure = async (userId, eventId) => {
           !usedLays.has(lay) &&
           back.fancyNumber <= lay.fancyNumber
         ) {
-          exposure += lay.profit + Math.abs(lay.loss);
+          exposure +=
+            lay.profit + Math.min(Math.abs(lay.loss), Math.abs(back.loss));
           usedBacks.add(back);
           usedLays.add(lay);
           break;
@@ -428,6 +443,7 @@ const calculateFancyExposure = async (userId, eventId) => {
     }
 
     marketExposure[marketId] = exposure;
+    // console.log(marketExposure);
   }
 
   return marketExposure;

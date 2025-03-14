@@ -175,6 +175,7 @@ const settleBets = async (eventId) => {
         marketId,
         selectionId,
         type,
+        odds,
         fancyNumber,
         stake,
       } = bet;
