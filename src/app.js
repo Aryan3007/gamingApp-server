@@ -152,21 +152,6 @@ const settlingBets = async () => {
         endTime - startTime
       }ms.`
     );
-
-    // Fetch events for all sportIds
-    // const eventResponses = await Promise.allSettled(
-    //   sportIds.map((id) =>
-    //     axios.get(`${API_BASE_URL}/GetMasterbysports?sid=${id}`)
-    //   )
-    // );
-
-    // Extract valid event IDs from responses
-    // const eventIds = eventResponses
-    //   .filter((res) => res.status === "fulfilled" && res.value?.data)
-    //   .flatMap((res) => res.value.data.map((event) => event.event.id))
-    //   .filter((id) => id !== undefined && id !== null);
-
-    // pastEventIds = eventIds;
   } catch (error) {
     console.error(
       `❌ [${getFormattedTimestamp()}] Unexpected error in settling Bets:`,

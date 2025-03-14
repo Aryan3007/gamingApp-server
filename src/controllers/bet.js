@@ -344,52 +344,6 @@ const getMargins = TryCatch(async (req, res, next) => {
   });
 });
 
-const getAllMargins = TryCatch(async (req, res, next) => {
-  const user = await User.findById(req.user);
-  if (!user) return next(new ErrorHandler("User Not Found", 400));
-
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  const margins = await Margin.find({
-    userId: user._id,
-    createdAt: { $gte: today },
-  }).sort({ createdAt: -1 });
-
-  const latestMargins = {};
-  for (const margin of margins) {
-    if (!latestMargins[margin.marketId]) {
-      latestMargins[margin.marketId] = margin;
-    }
-  }
-
-  const marketIds = Object.keys(latestMargins);
-  const [matchOddsResponse, bookmakerResponse] = await Promise.all([
-    axios.get(`${API_BASE_URL}/RMatchOdds?Mids=${marketIds.join(",")}`),
-    axios.get(`${API_BASE_URL}/RBookmaker?Mids=${marketIds.join(",")}`),
-  ]);
-
-  const matchOddsData = matchOddsResponse.data || [];
-  const bookmakerData = bookmakerResponse.data || [];
-
-  const filteredMargins = [
-    ...(matchOddsData.length
-      ? matchOddsData.map((market) => latestMargins[market.marketId])
-      : []),
-    ...(bookmakerData.length
-      ? bookmakerData.map((market) => latestMargins[market.marketId])
-      : []),
-  ];
-
-  return res.status(200).json({
-    success: true,
-    message: "Latest margins fetched successfully",
-    margins: filteredMargins.length
-      ? filteredMargins
-      : Object.values(latestMargins),
-  });
-});
-
 const calculateFancyExposure = async (userId, eventId) => {
   const margins = await Margin.find({ userId, eventId });
 
@@ -469,12 +423,8 @@ const getTotalExposure = TryCatch(async (req, res, next) => {
   const user = await User.findById(req.user);
   if (!user) return next(new ErrorHandler("User not found", 404));
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
   const nonFancyMargins = await Margin.find({
     userId: user._id,
-    createdAt: { $gte: today },
     fancyNumber: null,
   }).sort({ createdAt: -1 });
 
@@ -523,7 +473,6 @@ const getTotalExposure = TryCatch(async (req, res, next) => {
     userId: user._id,
     status: "pending",
     category: "fancy",
-    createdAt: { $gte: today },
   });
 
   const eventIds = [...new Set(bets.map((bet) => bet.eventId))];
@@ -545,7 +494,6 @@ const getTotalExposure = TryCatch(async (req, res, next) => {
 export {
   betTransactions,
   changeBetStatus,
-  getAllMargins,
   getBets,
   getFancyExposure,
   getMargins,

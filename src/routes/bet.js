@@ -2,7 +2,6 @@ import express from "express";
 import {
   betTransactions,
   changeBetStatus,
-  getAllMargins,
   getBets,
   getFancyExposure,
   getMargins,
@@ -20,8 +19,6 @@ app.post("/place", placeBet);
 app.get("/transactions", betTransactions);
 
 app.get("/margins", getMargins);
-
-app.get("/allmargins", getAllMargins);
 
 app.get("/fancy-exposure", getFancyExposure);
 
