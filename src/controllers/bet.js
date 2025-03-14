@@ -101,7 +101,7 @@ const placeBet = TryCatch(async (req, res, next) => {
           !usedLays.has(lay) &&
           back.fancyNumber <= lay.fancyNumber
         ) {
-          exposure += lay.profit;
+          exposure += lay.profit + Math.abs(lay.loss);
           usedBacks.add(back);
           usedLays.add(lay);
           break;
@@ -384,6 +384,10 @@ const calculateFancyExposure = async (userId, eventId) => {
 
   const marketMargins = {};
   for (const margin of margins) {
+    const { status } = await Bet.findOne({ marketId: margin.marketId }).sort({
+      createdAt: -1,
+    });
+    if (status !== "pending") continue;
     if (!marketMargins[margin.marketId]) {
       marketMargins[margin.marketId] = [];
     }
@@ -415,7 +419,7 @@ const calculateFancyExposure = async (userId, eventId) => {
           !usedLays.has(lay) &&
           back.fancyNumber <= lay.fancyNumber
         ) {
-          exposure += lay.profit;
+          exposure += lay.profit + Math.abs(lay.loss);
           usedBacks.add(back);
           usedLays.add(lay);
           break;
