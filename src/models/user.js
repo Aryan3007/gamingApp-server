@@ -14,7 +14,7 @@ const schema = new Schema(
     role: {
       type: String,
       required: [true, "Please enter a role"],
-      enum: ["admin", "user"],
+      enum: ["super_admin", "admin", "user"],
       default: "user",
     },
     gender: {
@@ -41,6 +41,11 @@ const schema = new Schema(
       type: String,
       required: [true, "Please enter a password"],
       select: false,
+    },
+    parentUser: {
+      type: String,
+      required: [true, "Please enter a parent user"],
+      ref: "User",
     },
   },
   {
