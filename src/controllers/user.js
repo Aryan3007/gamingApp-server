@@ -7,11 +7,12 @@ import { ErrorHandler } from "../utils/utility-class.js";
 
 const newUser = TryCatch(async (req, res, next) => {
   const { name, email, password, currency, role, gender, amount } = req.body;
-  const parentUser = req.user;
-  if (!parentUser) return next(new ErrorHandler("Parent User not found", 404));
 
   if (!name || !email || !password || !currency || !role || !gender || !amount)
     return next(new ErrorHandler("Please enter all fields", 400));
+
+  const parentUser = await User.findById(req.user);
+  if (!parentUser) return next(new ErrorHandler("Parent User not found", 404));
 
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   if (!emailRegex.test(email))
@@ -20,12 +21,20 @@ const newUser = TryCatch(async (req, res, next) => {
   if (password.length < 6)
     return next(new ErrorHandler("Password too short (min 6 chars)", 400));
 
-  const validRoles = ["user", "admin", "super_admin"];
+  const validRoles = ["user", "admin"];
   if (!validRoles.includes(role.toLowerCase()))
     return next(new ErrorHandler("Invalid role", 400));
 
   let user = await User.findOne({ email });
   if (user) return next(new ErrorHandler("Account already exists", 400));
+
+  if (parentUser.role === "admin") {
+    if (parentUser.amount < amount)
+      return next(new ErrorHandler("Insufficient balance", 400));
+
+    parentUser.amount -= amount;
+    await parentUser.save();
+  }
 
   user = await User.create({
     name,

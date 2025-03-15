@@ -44,8 +44,8 @@ const schema = new Schema(
     },
     parentUser: {
       type: String,
-      required: [true, "Please enter a parent user"],
       ref: "User",
+      default: null,
     },
   },
   {
