@@ -176,6 +176,8 @@ const addAmount = TryCatch(async (req, res, next) => {
 
   const requester = await User.findById(req.user);
   if (!requester) return next(new ErrorHandler("Unauthorized", 401));
+  if (requester.status === "banned")
+    return next(new ErrorHandler("Banned users cannot receive funds.", 400));
 
   const targetUser = await User.findById(id);
   if (!targetUser) return next(new ErrorHandler("User Not Found", 404));
