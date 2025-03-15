@@ -72,6 +72,10 @@ const placeBet = TryCatch(async (req, res, next) => {
   if (!response.data || !response.data.length)
     return next(new ErrorHandler("Odds Expired", 400));
 
+  const exposure = await getTotalExposure(req, res, next);
+  if (user.amount - exposure < 0)
+    return next(new ErrorHandler("Insufficient funds", 400));
+
   const { profit, loss, error } = calculateProfitAndLoss(
     stake,
     odds,
@@ -81,50 +85,50 @@ const placeBet = TryCatch(async (req, res, next) => {
   if (error) return next(new ErrorHandler(error, 400));
 
   if (category === "fancy") {
-    const margins = await Margin.find({ userId: user._id, eventId, marketId });
-    const obj = {
-      userId: user._id,
-      eventId,
-      marketId,
-      fancyNumber,
-      selectionId: type === "back" ? `1` : `2`,
-      profit: type === "lay" ? profit : loss,
-      loss: type === "lay" ? loss : profit,
-    };
-    const selectionGroups = { 1: [], 2: [] };
+    // const margins = await Margin.find({ userId: user._id, eventId, marketId });
+    // const obj = {
+    //   userId: user._id,
+    //   eventId,
+    //   marketId,
+    //   fancyNumber,
+    //   selectionId: type === "back" ? `1` : `2`,
+    //   profit: type === "lay" ? profit : loss,
+    //   loss: type === "lay" ? loss : profit,
+    // };
+    // const selectionGroups = { 1: [], 2: [] };
 
-    for (const margin of margins) {
-      if (margin.selectionId === "1" || margin.selectionId === "2") {
-        selectionGroups[margin.selectionId].push(margin);
-      }
-    }
-    selectionGroups[obj.selectionId].push(obj);
+    // for (const margin of margins) {
+    //   if (margin.selectionId === "1" || margin.selectionId === "2") {
+    //     selectionGroups[margin.selectionId].push(margin);
+    //   }
+    // }
+    // selectionGroups[obj.selectionId].push(obj);
 
-    let exposure = 0;
-    const usedBacks = new Set();
-    const usedLays = new Set();
+    // let exposure = 0;
+    // const usedBacks = new Set();
+    // const usedLays = new Set();
 
-    for (const back of selectionGroups["1"]) {
-      for (const lay of selectionGroups["2"]) {
-        if (
-          !usedBacks.has(back) &&
-          !usedLays.has(lay) &&
-          back.fancyNumber <= lay.fancyNumber
-        ) {
-          exposure +=
-            lay.profit + Math.min(Math.abs(lay.loss), Math.abs(back.loss));
-          usedBacks.add(back);
-          usedLays.add(lay);
-          break;
-        }
-      }
-    }
+    // for (const back of selectionGroups["1"]) {
+    //   for (const lay of selectionGroups["2"]) {
+    //     if (
+    //       !usedBacks.has(back) &&
+    //       !usedLays.has(lay) &&
+    //       back.fancyNumber <= lay.fancyNumber
+    //     ) {
+    //       exposure +=
+    //         lay.profit + Math.min(Math.abs(lay.loss), Math.abs(back.loss));
+    //       usedBacks.add(back);
+    //       usedLays.add(lay);
+    //       break;
+    //     }
+    //   }
+    // }
 
-    if (user.amount + loss + exposure < 0)
-      return next(new ErrorHandler("Insufficient funds", 400));
+    // if (user.amount + loss + exposure < 0)
+    //   return next(new ErrorHandler("Insufficient funds", 400));
 
-    user.amount += loss + exposure;
-    await user.save();
+    // user.amount += loss + exposure;
+    // await user.save();
 
     await Margin.create({
       userId: user._id,
@@ -144,8 +148,8 @@ const placeBet = TryCatch(async (req, res, next) => {
       if (user.amount < Math.abs(loss))
         return next(new ErrorHandler("Insufficient balance", 400));
 
-      user.amount += loss;
-      await user.save();
+      // user.amount += loss;
+      // await user.save();
 
       await Margin.create({
         userId: user._id,
@@ -164,11 +168,11 @@ const placeBet = TryCatch(async (req, res, next) => {
         loss
       );
 
-      const oldNegative = Math.min(margin.profit, margin.loss, 0);
-      const newNegative = Math.min(newProfit, newLoss, 0);
+      // const oldNegative = Math.min(margin.profit, margin.loss, 0);
+      // const newNegative = Math.min(newProfit, newLoss, 0);
 
-      user.amount += Math.abs(oldNegative) + newNegative;
-      await user.save();
+      // user.amount += Math.abs(oldNegative) + newNegative;
+      // await user.save();
 
       await Margin.create({
         userId: user._id,
@@ -423,10 +427,18 @@ const getTotalExposure = TryCatch(async (req, res, next) => {
   const user = await User.findById(req.user);
   if (!user) return next(new ErrorHandler("User not found", 404));
 
+  const nonFancyMarketIds = await Bet.distinct("marketId", {
+    userId: user._id,
+    status: "pending",
+    category: { $ne: "fancy" },
+  });
+
   const nonFancyMargins = await Margin.find({
     userId: user._id,
-    fancyNumber: null,
-  }).sort({ createdAt: -1 });
+    marketId: { $in: nonFancyMarketIds },
+  })
+    .sort({ createdAt: -1 })
+    .lean();
 
   const latestMargins = {};
   for (const margin of nonFancyMargins) {
@@ -435,28 +447,8 @@ const getTotalExposure = TryCatch(async (req, res, next) => {
     }
   }
 
-  const marketIds = Object.keys(latestMargins);
-  const [matchOddsResponse, bookmakerResponse] = await Promise.all([
-    axios.get(`${API_BASE_URL}/RMatchOdds?Mids=${marketIds.join(",")}`),
-    axios.get(`${API_BASE_URL}/RBookmaker?Mids=${marketIds.join(",")}`),
-  ]);
-
-  const matchOddsData = matchOddsResponse.data || [];
-  const bookmakerData = bookmakerResponse.data || [];
-
-  const filteredMargins = [
-    ...(matchOddsData.length
-      ? matchOddsData.map((market) => latestMargins[market.marketId])
-      : []),
-    ...(bookmakerData.length
-      ? bookmakerData.map((market) => latestMargins[market.marketId])
-      : []),
-  ];
-
   let totalExposure = 0;
-  const margins = filteredMargins.length
-    ? filteredMargins
-    : Object.values(latestMargins);
+  const margins = Object.values(latestMargins);
   for (const margin of margins) {
     let maxLoss = 0;
     if (margin.profit < 0 && margin.loss > 0)
@@ -469,13 +461,12 @@ const getTotalExposure = TryCatch(async (req, res, next) => {
     totalExposure += maxLoss;
   }
 
-  const bets = await Bet.find({
+  const eventIds = await Bet.distinct("eventId", {
     userId: user._id,
     status: "pending",
     category: "fancy",
   });
 
-  const eventIds = [...new Set(bets.map((bet) => bet.eventId))];
   for (const eventId of eventIds) {
     const marketExposure = await calculateFancyExposure(user._id, eventId);
     totalExposure += Object.values(marketExposure).reduce(

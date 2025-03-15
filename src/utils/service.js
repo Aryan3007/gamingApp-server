@@ -166,7 +166,7 @@ const settleBets = async (eventId) => {
     // Prepare bet updates and user balance updates
     const betUpdates = [];
     const userUpdates = new Map();
-    const processedBets = new Set();
+    // const processedBets = new Set();
 
     for (const bet of pendingBets) {
       const {
@@ -183,23 +183,23 @@ const settleBets = async (eventId) => {
       let isMarketResultAvailable = false;
 
       if (category === "match odds" && matchOddsResults.has(marketId)) {
-        const margin = marginMap.get(`${userId}-${marketId}`);
-        if (!margin) {
-          console.log(
-            `No margin found! event: ${eventId}, market: ${marketId} user: ${userId}`
-          );
-          return;
-        }
+        // const margin = marginMap.get(`${userId}-${marketId}`);
+        // if (!margin) {
+        //   console.log(
+        //     `No margin found! event: ${eventId}, market: ${marketId} user: ${userId}`
+        //   );
+        //   return;
+        // }
 
-        const updateAmount = Math.abs(Math.min(margin.profit, margin.loss, 0));
-        const betKey = `${userId}-${marketId}`;
-        if (!processedBets.has(betKey)) {
-          processedBets.add(betKey);
-          userUpdates.set(
-            userId,
-            (userUpdates.get(userId) || 0) + updateAmount
-          );
-        }
+        // const updateAmount = Math.abs(Math.min(margin.profit, margin.loss, 0));
+        // const betKey = `${userId}-${marketId}`;
+        // if (!processedBets.has(betKey)) {
+        //   processedBets.add(betKey);
+        //   userUpdates.set(
+        //     userId,
+        //     (userUpdates.get(userId) || 0) + updateAmount
+        //   );
+        // }
 
         isWinningBet =
           (matchOddsResults.get(marketId) === selectionId && type === "back") ||
@@ -207,23 +207,23 @@ const settleBets = async (eventId) => {
 
         isMarketResultAvailable = true;
       } else if (category === "bookmaker" && bookmakerResults.has(marketId)) {
-        const margin = marginMap.get(`${userId}-${marketId}`);
-        if (!margin) {
-          console.log(
-            `No margin found! event: ${eventId}, market: ${marketId} user: ${userId}`
-          );
-          return;
-        }
+        // const margin = marginMap.get(`${userId}-${marketId}`);
+        // if (!margin) {
+        //   console.log(
+        //     `No margin found! event: ${eventId}, market: ${marketId} user: ${userId}`
+        //   );
+        //   return;
+        // }
 
-        const updateAmount = Math.abs(Math.min(margin.profit, margin.loss, 0));
-        const betKey = `${userId}-${marketId}`;
-        if (!processedBets.has(betKey)) {
-          processedBets.add(betKey);
-          userUpdates.set(
-            userId,
-            (userUpdates.get(userId) || 0) + updateAmount
-          );
-        }
+        // const updateAmount = Math.abs(Math.min(margin.profit, margin.loss, 0));
+        // const betKey = `${userId}-${marketId}`;
+        // if (!processedBets.has(betKey)) {
+        //   processedBets.add(betKey);
+        //   userUpdates.set(
+        //     userId,
+        //     (userUpdates.get(userId) || 0) + updateAmount
+        //   );
+        // }
 
         isWinningBet =
           (bookmakerResults.get(marketId) === selectionId && type === "back") ||
