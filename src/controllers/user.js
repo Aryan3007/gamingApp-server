@@ -83,18 +83,30 @@ const getMyProfile = TryCatch(async (req, res, next) => {
 });
 
 const getAllUsers = TryCatch(async (req, res, next) => {
-  const { status, role, page = 1, limit = 9 } = req.query;
-  const query = {};
-  if (status) query.status = status.toLowerCase();
-  if (role) query.role = role.toLowerCase();
+  const user = await User.findById(req.user);
+  if (!user) return next(new ErrorHandler("User Not Found", 404));
 
-  const users = await User.find(query)
-    .skip((page - 1) * limit)
-    .limit(parseInt(limit));
+  let result;
+
+  if (user.role === "super_admin") {
+    const admins = await User.find({ role: "admin" }).lean();
+    const adminIds = admins.map((admin) => admin._id);
+
+    const users = await User.find({ parentUser: { $in: adminIds } }).lean();
+
+    result = admins.map((admin) => ({
+      admin,
+      users: users.filter((u) => String(u.parentUser) === String(admin._id)),
+    }));
+  } else if (user.role === "admin") {
+    result = await User.find({ parentUser: user._id }).lean();
+  } else {
+    return next(new ErrorHandler("Unauthorized Access", 403));
+  }
 
   return res.status(200).json({
     success: true,
-    users,
+    users: result,
   });
 });
 

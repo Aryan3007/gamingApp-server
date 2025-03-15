@@ -7,11 +7,7 @@ import {
   login,
   newUser,
 } from "../controllers/user.js";
-import {
-  adminOrSuperAdmin,
-  isAuthenticated,
-  superAdminOnly,
-} from "../middlewares/auth.js";
+import { adminOrSuperAdmin, isAuthenticated } from "../middlewares/auth.js";
 
 const app = express.Router();
 
@@ -23,7 +19,7 @@ app.post("/new", adminOrSuperAdmin, newUser);
 
 app.get("/me", getMyProfile);
 
-app.get("/allusers", superAdminOnly, getAllUsers);
+app.get("/allusers", adminOrSuperAdmin, getAllUsers);
 
 app.post("/userstatus/:id", adminOrSuperAdmin, changeUserStatus);
 
