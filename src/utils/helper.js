@@ -1,3 +1,6 @@
+import { Bet } from "../models/bet.js";
+import { Margin } from "../models/margin.js";
+
 const calculateProfitAndLoss = (stake, odds, type, category) => {
   let profit = 0;
   let loss = 0;
@@ -45,6 +48,117 @@ const calculateNewMargin = (margin, selectionId, type, profit, loss) => {
   };
 };
 
+const calculateFancyExposure = async (userId, eventId) => {
+  const margins = await Margin.find({ userId, eventId });
+
+  const marketMargins = {};
+  for (const margin of margins) {
+    const { status } = await Bet.findOne({ marketId: margin.marketId }).sort({
+      createdAt: -1,
+    });
+    if (status !== "pending") continue;
+    if (!marketMargins[margin.marketId]) {
+      marketMargins[margin.marketId] = [];
+    }
+    marketMargins[margin.marketId].push(margin);
+  }
+
+  const marketExposure = {};
+  for (const [marketId, margins] of Object.entries(marketMargins)) {
+    const selectionGroups = { 1: [], 2: [] };
+
+    for (const margin of margins) {
+      if (margin.selectionId === "1" || margin.selectionId === "2") {
+        selectionGroups[margin.selectionId].push(margin);
+      }
+    }
+
+    let exposure = 0;
+
+    for (const margin of selectionGroups["2"]) exposure += margin.loss;
+    for (const margin of selectionGroups["1"]) exposure += margin.profit;
+
+    // console.log(selectionGroups["1"]);
+    // console.log(selectionGroups["2"]);
+
+    const usedBacks = new Set();
+    const usedLays = new Set();
+
+    for (const back of selectionGroups["1"]) {
+      for (const lay of selectionGroups["2"]) {
+        if (
+          !usedBacks.has(back) &&
+          !usedLays.has(lay) &&
+          back.fancyNumber <= lay.fancyNumber
+        ) {
+          exposure +=
+            lay.profit + Math.min(Math.abs(lay.loss), Math.abs(back.loss));
+          usedBacks.add(back);
+          usedLays.add(lay);
+          break;
+        }
+      }
+    }
+
+    marketExposure[marketId] = exposure;
+    // console.log(marketExposure);
+  }
+
+  return marketExposure;
+};
+
+const calculateTotalExposure = async (userId) => {
+  const nonFancyMarketIds = await Bet.distinct("marketId", {
+    userId,
+    status: "pending",
+    category: { $ne: "fancy" },
+  });
+
+  const nonFancyMargins = await Margin.find({
+    userId,
+    marketId: { $in: nonFancyMarketIds },
+  })
+    .sort({ createdAt: -1 })
+    .lean();
+
+  const latestMargins = {};
+  for (const margin of nonFancyMargins) {
+    if (!latestMargins[margin.marketId]) {
+      latestMargins[margin.marketId] = margin;
+    }
+  }
+
+  let totalExposure = 0;
+  const margins = Object.values(latestMargins);
+  for (const margin of margins) {
+    let maxLoss = 0;
+    if (margin.profit < 0 && margin.loss > 0)
+      maxLoss += Math.abs(margin.profit);
+    if (margin.profit < 0 && margin.loss < 0) {
+      maxLoss += Math.max(Math.abs(margin.profit), Math.abs(margin.loss));
+    } else if (margin.loss < 0) {
+      maxLoss += Math.abs(margin.loss);
+    }
+    totalExposure += maxLoss;
+  }
+
+  const eventIds = await Bet.distinct("eventId", {
+    userId,
+    status: "pending",
+    category: "fancy",
+  });
+
+  for (const eventId of eventIds) {
+    const marketExposure = await calculateFancyExposure(userId, eventId);
+    totalExposure += Object.values(marketExposure).reduce(
+      (sum, value) => sum + Math.abs(value),
+      0
+    );
+  }
+
+  return totalExposure;
+};
+
 const getFormattedTimestamp = () => {
   return new Date()
     .toLocaleString("en-US", {
@@ -59,4 +173,10 @@ const getFormattedTimestamp = () => {
     .replace(",", "");
 };
 
-export { calculateNewMargin, calculateProfitAndLoss, getFormattedTimestamp };
+export {
+  calculateFancyExposure,
+  calculateNewMargin,
+  calculateProfitAndLoss,
+  calculateTotalExposure,
+  getFormattedTimestamp,
+};

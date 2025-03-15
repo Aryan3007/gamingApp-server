@@ -4,7 +4,12 @@ import { TryCatch } from "../middlewares/error.js";
 import { Bet } from "../models/bet.js";
 import { Margin } from "../models/margin.js";
 import { User } from "../models/user.js";
-import { calculateNewMargin, calculateProfitAndLoss } from "../utils/helper.js";
+import {
+  calculateFancyExposure,
+  calculateNewMargin,
+  calculateProfitAndLoss,
+  calculateTotalExposure,
+} from "../utils/helper.js";
 import { ErrorHandler } from "../utils/utility-class.js";
 
 const placeBet = TryCatch(async (req, res, next) => {
@@ -72,7 +77,7 @@ const placeBet = TryCatch(async (req, res, next) => {
   if (!response.data || !response.data.length)
     return next(new ErrorHandler("Odds Expired", 400));
 
-  const exposure = await getTotalExposure(req, res, next);
+  const exposure = await calculateTotalExposure(req.user);
   if (user.amount - exposure < 0)
     return next(new ErrorHandler("Insufficient funds", 400));
 
@@ -348,65 +353,6 @@ const getMargins = TryCatch(async (req, res, next) => {
   });
 });
 
-const calculateFancyExposure = async (userId, eventId) => {
-  const margins = await Margin.find({ userId, eventId });
-
-  const marketMargins = {};
-  for (const margin of margins) {
-    const { status } = await Bet.findOne({ marketId: margin.marketId }).sort({
-      createdAt: -1,
-    });
-    if (status !== "pending") continue;
-    if (!marketMargins[margin.marketId]) {
-      marketMargins[margin.marketId] = [];
-    }
-    marketMargins[margin.marketId].push(margin);
-  }
-
-  const marketExposure = {};
-  for (const [marketId, margins] of Object.entries(marketMargins)) {
-    const selectionGroups = { 1: [], 2: [] };
-
-    for (const margin of margins) {
-      if (margin.selectionId === "1" || margin.selectionId === "2") {
-        selectionGroups[margin.selectionId].push(margin);
-      }
-    }
-
-    let exposure = 0;
-
-    for (const margin of selectionGroups["2"]) exposure += margin.loss;
-    for (const margin of selectionGroups["1"]) exposure += margin.profit;
-
-    // console.log(selectionGroups["1"]);
-    // console.log(selectionGroups["2"]);
-
-    const usedBacks = new Set();
-    const usedLays = new Set();
-
-    for (const back of selectionGroups["1"]) {
-      for (const lay of selectionGroups["2"]) {
-        if (
-          !usedBacks.has(back) &&
-          !usedLays.has(lay) &&
-          back.fancyNumber <= lay.fancyNumber
-        ) {
-          exposure +=
-            lay.profit + Math.min(Math.abs(lay.loss), Math.abs(back.loss));
-          usedBacks.add(back);
-          usedLays.add(lay);
-          break;
-        }
-      }
-    }
-
-    marketExposure[marketId] = exposure;
-    // console.log(marketExposure);
-  }
-
-  return marketExposure;
-};
-
 const getFancyExposure = TryCatch(async (req, res, next) => {
   const user = await User.findById(req.user);
   if (!user) return next(new ErrorHandler("User not found", 404));
@@ -427,58 +373,12 @@ const getTotalExposure = TryCatch(async (req, res, next) => {
   const user = await User.findById(req.user);
   if (!user) return next(new ErrorHandler("User not found", 404));
 
-  const nonFancyMarketIds = await Bet.distinct("marketId", {
-    userId: user._id,
-    status: "pending",
-    category: { $ne: "fancy" },
-  });
-
-  const nonFancyMargins = await Margin.find({
-    userId: user._id,
-    marketId: { $in: nonFancyMarketIds },
-  })
-    .sort({ createdAt: -1 })
-    .lean();
-
-  const latestMargins = {};
-  for (const margin of nonFancyMargins) {
-    if (!latestMargins[margin.marketId]) {
-      latestMargins[margin.marketId] = margin;
-    }
-  }
-
-  let totalExposure = 0;
-  const margins = Object.values(latestMargins);
-  for (const margin of margins) {
-    let maxLoss = 0;
-    if (margin.profit < 0 && margin.loss > 0)
-      maxLoss += Math.abs(margin.profit);
-    if (margin.profit < 0 && margin.loss < 0) {
-      maxLoss += Math.max(Math.abs(margin.profit), Math.abs(margin.loss));
-    } else if (margin.loss < 0) {
-      maxLoss += Math.abs(margin.loss);
-    }
-    totalExposure += maxLoss;
-  }
-
-  const eventIds = await Bet.distinct("eventId", {
-    userId: user._id,
-    status: "pending",
-    category: "fancy",
-  });
-
-  for (const eventId of eventIds) {
-    const marketExposure = await calculateFancyExposure(user._id, eventId);
-    totalExposure += Object.values(marketExposure).reduce(
-      (sum, value) => sum + Math.abs(value),
-      0
-    );
-  }
+  const exposure = await calculateTotalExposure(user._id);
 
   return res.status(200).json({
     success: true,
     message: "Total exposure fetched successfully",
-    exposure: totalExposure,
+    exposure,
   });
 });
 
