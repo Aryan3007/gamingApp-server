@@ -7,25 +7,31 @@ import { ErrorHandler } from "../utils/utility-class.js";
 
 const newUser = TryCatch(async (req, res, next) => {
   const { name, email, password, currency, role, gender, amount } = req.body;
-  const parentUser = req.user;
-  if (!parentUser) return next(new ErrorHandler("Parent User not found", 404));
 
   if (!name || !email || !password || !currency || !role || !gender || !amount)
     return next(new ErrorHandler("Please enter all fields", 400));
 
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!emailRegex.test(email))
+  if (!emailRegex.test(email)) {
     return next(new ErrorHandler("Invalid email format", 400));
+  }
 
-  if (password.length < 6)
-    return next(new ErrorHandler("Password too short (min 6 chars)", 400));
+  if (password.length < 6) {
+    return next(
+      new ErrorHandler("Password must be at least 6 characters", 400)
+    );
+  }
 
-  const validRoles = ["user", "admin", "super_admin"];
-  if (!validRoles.includes(role.toLowerCase()))
+  const validRoles = ["user", "admin"];
+  if (!validRoles.includes(role.toLowerCase())) {
     return next(new ErrorHandler("Invalid role", 400));
+  }
 
   let user = await User.findOne({ email });
-  if (user) return next(new ErrorHandler("Account already exists", 400));
+  if (user)
+    return next(
+      new ErrorHandler("An account with this email already exists", 400)
+    );
 
   user = await User.create({
     name,
@@ -35,10 +41,9 @@ const newUser = TryCatch(async (req, res, next) => {
     password,
     currency: currency.toLowerCase(),
     role: role.toLowerCase(),
-    parentUser,
   });
 
-  sendToken(res, user, 201, `${role} created successfully`);
+  sendToken(res, user, 201, "User created successfully");
 });
 
 const login = TryCatch(async (req, res, next) => {
@@ -57,6 +62,7 @@ const login = TryCatch(async (req, res, next) => {
     );
 
   const isMatch = await compare(password, user.password);
+
   if (!isMatch)
     return next(new ErrorHandler("Invalid Username or Password", 404));
 
@@ -89,116 +95,72 @@ const getAllUsers = TryCatch(async (req, res, next) => {
   });
 });
 
-const changeUserStatus = TryCatch(async (req, res, next) => {
-  const id = req.params.id;
-  const { status } = req.body;
-  if (!status) return next(new ErrorHandler("Please provide status", 400));
-
-  if (!mongoose.Types.ObjectId.isValid(id))
-    return next(new ErrorHandler("Invalid User ID", 400));
-
-  const validStatuses = ["active", "banned"];
-  if (!validStatuses.includes(status.toLowerCase()))
-    return next(new ErrorHandler("Invalid status value", 400));
-
-  const requestingUser = await User.findById(req.user);
-  if (!requestingUser) return next(new ErrorHandler("User not found", 404));
-
-  const targetUser = await User.findById(id);
-  if (!targetUser) return next(new ErrorHandler("Invalid ID", 400));
-
-  if (requestingUser.role === "super_admin") {
-    if (targetUser.role !== "admin") {
-      return next(
-        new ErrorHandler("Super admin can only ban/unban admins", 403)
-      );
-    }
-    targetUser.status = status.toLowerCase();
-    await targetUser.save();
-
-    // Ban/unban all users created by the admin
-    await User.updateMany(
-      { parentUser: targetUser._id },
-      { $set: { status: status.toLowerCase() } }
-    );
-  } else if (requestingUser.role === "admin") {
-    if (
-      targetUser.role !== "user" ||
-      targetUser.parentUser.toString() !== requestingUser._id.toString()
-    ) {
-      return next(
-        new ErrorHandler("Admins can only ban/unban users they created", 403)
-      );
-    }
-    targetUser.status = status.toLowerCase();
-    await targetUser.save();
-  } else {
-    return next(new ErrorHandler("Unauthorized access", 403));
-  }
-
-  return res.status(200).json({
-    success: true,
-    message: `User ${status} successfully`,
-    user: targetUser,
-  });
-});
-
 const addAmount = TryCatch(async (req, res, next) => {
-  const { id } = req.params;
+  const id = req.params.id;
   const { amount } = req.body;
 
   if (!amount || isNaN(amount) || amount <= 0)
     return next(new ErrorHandler("Please enter a valid amount", 400));
 
-  if (!mongoose.Types.ObjectId.isValid(id))
+  if (!mongoose.Types.ObjectId.isValid(id)) {
     return next(new ErrorHandler("Invalid User ID", 400));
-
-  const requester = await User.findById(req.user);
-  if (!requester) return next(new ErrorHandler("Unauthorized", 401));
-
-  const targetUser = await User.findById(id);
-  if (!targetUser) return next(new ErrorHandler("User Not Found", 404));
-
-  if (requester.role === "super_admin") {
-    if (targetUser.role !== "admin") {
-      return next(
-        new ErrorHandler("Super Admin can add money only to Admins", 403)
-      );
-    }
-  } else if (requester.role === "admin") {
-    if (
-      targetUser.role !== "user" ||
-      targetUser.parentUser.toString() !== requester._id.toString()
-    ) {
-      return next(
-        new ErrorHandler("Admin can add money only to their own users", 403)
-      );
-    }
-
-    if (requester.amount < amount)
-      return next(new ErrorHandler("Insufficient balance", 400));
-
-    requester.amount -= amount;
-    await requester.save();
-  } else {
-    return next(new ErrorHandler("Unauthorized action", 403));
   }
 
-  targetUser.amount += amount;
-  await targetUser.save();
+  const user = await User.findById(id);
+  if (!user) return next(new ErrorHandler("User Not Found", 404));
+
+  user.amount += amount;
+  try {
+    await user.save();
+  } catch (err) {
+    return next(new ErrorHandler("Error saving user data", 500));
+  }
 
   return res.status(200).json({
     success: true,
-    message: `${amount} added successfully`,
-    user: targetUser,
+    message: `${amount} Amount added successfully`,
+    user,
+  });
+});
+
+const changeUserStatus = TryCatch(async (req, res, next) => {
+  const id = req.params.id;
+  const { status } = req.body;
+
+  if (!status) return next(new ErrorHandler("Please provide status", 400));
+
+  const validStatuses = ["active", "banned"];
+  if (!validStatuses.includes(status.toLowerCase())) {
+    return next(new ErrorHandler("Invalid status value", 400));
+  }
+
+  const user = await User.findById(id);
+  if (!user) return next(new ErrorHandler("Invalid ID", 400));
+
+  if (user.role === "admin")
+    return next(
+      new ErrorHandler("You are not allowed to perform this operation", 400)
+    );
+
+  user.status = status.toLowerCase();
+  try {
+    await user.save();
+  } catch (err) {
+    return next(new ErrorHandler("Error saving user data", 500));
+  }
+
+  return res.status(200).json({
+    success: true,
+    message: `User ${status} successfully`,
+    user,
   });
 });
 
 export {
   addAmount,
-  changeUserStatus,
   getAllUsers,
   getMyProfile,
   login,
   newUser,
+  changeUserStatus,
 };

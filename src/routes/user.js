@@ -7,11 +7,7 @@ import {
   login,
   newUser,
 } from "../controllers/user.js";
-import {
-  adminOrSuperAdmin,
-  isAuthenticated,
-  superAdminOnly,
-} from "../middlewares/auth.js";
+import { adminOnly, isAuthenticated } from "../middlewares/auth.js";
 
 const app = express.Router();
 
@@ -19,14 +15,14 @@ app.post("/login", login);
 
 app.use(isAuthenticated);
 
-app.post("/new", adminOrSuperAdmin, newUser);
+app.post("/new", adminOnly, newUser);
 
 app.get("/me", getMyProfile);
 
-app.get("/allusers", superAdminOnly, getAllUsers);
+app.get("/allusers", adminOnly, getAllUsers);
 
-app.post("/userstatus/:id", adminOrSuperAdmin, changeUserStatus);
+app.post("/userstatus/:id", adminOnly, changeUserStatus);
 
-app.put("/addamount/:id", adminOrSuperAdmin, addAmount);
+app.put("/addamount/:id", adminOnly, addAmount);
 
 export default app;

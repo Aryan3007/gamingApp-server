@@ -44,24 +44,4 @@ const adminOnly = TryCatch(async (req, res, next) => {
   next();
 });
 
-const superAdminOnly = TryCatch(async (req, res, next) => {
-  const user = await User.findById(req.user);
-  if (!user) return next(new ErrorHandler("User Not Found", 404));
-
-  if (user.role !== "super_admin")
-    return next(new ErrorHandler("Unauthorized Access", 403));
-
-  next();
-});
-
-const adminOrSuperAdmin = TryCatch(async (req, res, next) => {
-  const user = await User.findById(req.user);
-  if (!user) return next(new ErrorHandler("User Not Found", 404));
-
-  if (user.role !== "super_admin" && user.role !== "admin")
-    return next(new ErrorHandler("Unauthorized Access", 403));
-
-  next();
-});
-
-export { adminOnly, isAuthenticated, superAdminOnly, adminOrSuperAdmin };
+export { adminOnly, isAuthenticated };
