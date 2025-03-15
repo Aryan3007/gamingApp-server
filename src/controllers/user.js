@@ -44,7 +44,7 @@ const newUser = TryCatch(async (req, res, next) => {
     password,
     currency: currency.toLowerCase(),
     role: role.toLowerCase(),
-    parentUser,
+    parentUser: parentUser._id,
   });
 
   sendToken(res, user, 201, `${role} created successfully`);
