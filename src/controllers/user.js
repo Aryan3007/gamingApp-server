@@ -151,6 +151,12 @@ const changeUserStatus = TryCatch(async (req, res, next) => {
         new ErrorHandler("Admins can only ban/unban users they created", 403)
       );
     }
+
+    if (status.toLowerCase() === "banned")
+      requestingUser.amount += targetUser.amount;
+    else requestingUser.amount -= targetUser.amount;
+    await requestingUser.save();
+
     targetUser.status = status.toLowerCase();
     await targetUser.save();
   } else {
