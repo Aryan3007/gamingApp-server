@@ -230,6 +230,60 @@ const betTransactions = TryCatch(async (req, res, next) => {
   });
 });
 
+const getMargins = TryCatch(async (req, res, next) => {
+  const user = await User.findById(req.user);
+  if (!user) return next(new ErrorHandler("User Not Found", 400));
+
+  const { eventId } = req.query;
+  if (!eventId) return next(new ErrorHandler("Event ID is required", 400));
+
+  const margins = await Margin.find({ userId: user._id, eventId }).sort({
+    createdAt: -1,
+  });
+
+  const latestMargins = {};
+  for (const margin of margins) {
+    if (!latestMargins[margin.marketId]) {
+      latestMargins[margin.marketId] = margin;
+    }
+  }
+
+  return res.status(200).json({
+    success: true,
+    message: "Margins fetched successfully",
+    margins: latestMargins,
+  });
+});
+
+const getFancyExposure = TryCatch(async (req, res, next) => {
+  const user = await User.findById(req.user);
+  if (!user) return next(new ErrorHandler("User not found", 404));
+
+  const { eventId } = req.query;
+  if (!eventId) return next(new ErrorHandler("Event ID is required", 400));
+
+  const marketExposure = await calculateFancyExposure(user._id, eventId);
+
+  return res.status(200).json({
+    success: true,
+    message: "Fancy exposure fetched successfully",
+    marketExposure,
+  });
+});
+
+const getTotalExposure = TryCatch(async (req, res, next) => {
+  const user = await User.findById(req.user);
+  if (!user) return next(new ErrorHandler("User not found", 404));
+
+  const exposure = await calculateTotalExposure(user._id);
+
+  return res.status(200).json({
+    success: true,
+    message: "Total exposure fetched successfully",
+    exposure,
+  });
+});
+
 const getBets = TryCatch(async (req, res, next) => {
   const { status, userId, selectionId, eventId, category, type } = req.query;
 
@@ -325,60 +379,6 @@ const changeBetStatus = TryCatch(async (req, res, next) => {
     success: true,
     message: `Bet status changed successfully to ${status}`,
     bet,
-  });
-});
-
-const getMargins = TryCatch(async (req, res, next) => {
-  const user = await User.findById(req.user);
-  if (!user) return next(new ErrorHandler("User Not Found", 400));
-
-  const { eventId } = req.query;
-  if (!eventId) return next(new ErrorHandler("Event ID is required", 400));
-
-  const margins = await Margin.find({ userId: user._id, eventId }).sort({
-    createdAt: -1,
-  });
-
-  const latestMargins = {};
-  for (const margin of margins) {
-    if (!latestMargins[margin.marketId]) {
-      latestMargins[margin.marketId] = margin;
-    }
-  }
-
-  return res.status(200).json({
-    success: true,
-    message: "Margins fetched successfully",
-    margins: latestMargins,
-  });
-});
-
-const getFancyExposure = TryCatch(async (req, res, next) => {
-  const user = await User.findById(req.user);
-  if (!user) return next(new ErrorHandler("User not found", 404));
-
-  const { eventId } = req.query;
-  if (!eventId) return next(new ErrorHandler("Event ID is required", 400));
-
-  const marketExposure = await calculateFancyExposure(user._id, eventId);
-
-  return res.status(200).json({
-    success: true,
-    message: "Fancy exposure fetched successfully",
-    marketExposure,
-  });
-});
-
-const getTotalExposure = TryCatch(async (req, res, next) => {
-  const user = await User.findById(req.user);
-  if (!user) return next(new ErrorHandler("User not found", 404));
-
-  const exposure = await calculateTotalExposure(user._id);
-
-  return res.status(200).json({
-    success: true,
-    message: "Total exposure fetched successfully",
-    exposure,
   });
 });
 
