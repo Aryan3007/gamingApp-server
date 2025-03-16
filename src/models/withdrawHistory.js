@@ -7,6 +7,11 @@ const schema = new Schema(
       required: true,
       ref: "User",
     },
+    parentUser: {
+      type: String,
+      required: true,
+      ref: "User",
+    },
     accNo: {
       type: String,
       required: true,
@@ -24,8 +29,9 @@ const schema = new Schema(
       required: true,
     },
     contact: {
-      type: Number,
+      type: String,
       required: true,
+      match: [/^\d{10}$/, "Invalid contact number"],
     },
     amount: {
       type: Number,

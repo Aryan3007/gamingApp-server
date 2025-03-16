@@ -5,7 +5,7 @@ import { WithdrawHistory } from "../models/withdrawHistory.js";
 import { ErrorHandler } from "../utils/utility-class.js";
 
 const depositHistory = TryCatch(async (req, res, next) => {
-  const user = await User.findById(req.user);
+  const user = await User.findById(req.user).lean();
   if (!user) return next(new ErrorHandler("User not found", 404));
 
   let query = {};
@@ -18,7 +18,9 @@ const depositHistory = TryCatch(async (req, res, next) => {
     return next(new ErrorHandler("Unauthorized Access", 403));
   }
 
-  const history = await PaymentHistory.find(query).lean();
+  const history = await PaymentHistory.find(query)
+    .sort({ createdAt: -1 })
+    .lean();
 
   return res.status(200).json({
     success: true,
@@ -29,64 +31,72 @@ const depositHistory = TryCatch(async (req, res, next) => {
   });
 });
 
-const withdrawStatus = TryCatch(async (req, res, next) => {
-  const { userId } = req.query;
-  if (!userId) return next(new ErrorHandler("User ID is required", 400));
-
-  const user = await User.findById(req.user);
+const withdrawalHistory = TryCatch(async (req, res, next) => {
+  const user = await User.findById(req.user).lean();
   if (!user) return next(new ErrorHandler("User not found", 404));
 
-  if (user.role !== "admin" && user._id.toString() !== userId) {
-    return next(
-      new ErrorHandler("You can only access your own withdraw history", 403)
-    );
+  let query = {};
+
+  if (user.role === "user") query.userId = user._id;
+  else if (user.role === "admin") {
+    query.userId = await User.find({ parentUser: user._id }).distinct("_id");
+  } else if (user.role === "super_admin") {
+    query.userId = await User.find({ parentUser: user._id }).distinct("_id");
+  } else {
+    return next(new ErrorHandler("Unauthorized Access", 403));
   }
 
-  const withdrawHistory = await WithdrawHistory.find({ userId });
-  const message =
-    withdrawHistory.length > 0
-      ? "Fetched withdraw history successfully"
-      : "No withdraw history found";
+  const history = await WithdrawHistory.find(query)
+    .sort({ createdAt: -1 })
+    .lean();
 
   return res.status(200).json({
     success: true,
-    message,
-    withdrawHistory,
+    message: history.length
+      ? "Fetched withdrawal history successfully"
+      : "No withdrawal history found",
+    history,
   });
 });
 
-const withdrawRequest = TryCatch(async (req, res, next) => {
-  const { userId } = req.query;
+const withdrawalRequest = TryCatch(async (req, res, next) => {
   const { amount, accNo, ifsc, contact, bankName, receiverName } = req.body;
 
-  if (!userId) {
-    return next(new ErrorHandler("User ID is required", 400));
-  }
+  const requester = await User.findById(req.user).lean();
+  if (!requester) return next(new ErrorHandler("User not found", 404));
 
   if (!amount || !accNo || !ifsc || !contact || !bankName || !receiverName)
     return next(new ErrorHandler("All fields are required", 400));
 
-  if (amount <= 100)
-    return next(new ErrorHandler("Amount should be more than 100", 400));
+  if (isNaN(amount) || amount <= 100)
+    return next(
+      new ErrorHandler("Invalid amount. Enter a number greater than 100.", 400)
+    );
 
-  const user = await User.findById(userId);
-  if (!user) return next(new ErrorHandler("User Not Found", 404));
-
-  if (user.amount < amount) {
-    return next(new ErrorHandler("Insufficient balance for withdrawal", 400));
-  }
-
-  if (contact.toString().length !== 10) {
+  if (contact.toString().length !== 10)
     return next(new ErrorHandler("Invalid contact number", 400));
-  }
 
   const ifscRegex = /^[A-Z]{4}0[A-Z0-9]{6}$/;
-  if (!ifscRegex.test(ifsc)) {
+  if (!ifscRegex.test(ifsc))
     return next(new ErrorHandler("Invalid IFSC code format", 400));
+
+  let parentUser;
+  if (requester.role === "user") {
+    parentUser = requester.parentUser;
+  } else if (requester.role === "admin") {
+    parentUser = requester.parentUser;
+  } else {
+    return next(new ErrorHandler("Unauthorized access", 403));
   }
 
-  const withdrawhistory = await WithdrawHistory.create({
-    userId,
+  if (!parentUser) return next(new ErrorHandler("Parent user not found", 404));
+
+  if (requester.amount < amount)
+    return next(new ErrorHandler("Insufficient balance for withdrawal", 400));
+
+  const withdrawHistory = await WithdrawHistory.create({
+    userId: requester._id,
+    parentUser,
     accNo,
     ifsc,
     contact,
@@ -99,49 +109,61 @@ const withdrawRequest = TryCatch(async (req, res, next) => {
     success: true,
     message:
       "Withdrawal request submitted successfully. It will be processed after admin approval.",
-    withdrawhistory,
+    withdrawHistory,
   });
 });
 
 const changeWithdrawStatus = TryCatch(async (req, res, next) => {
-  const { userId, withdrawId, status } = req.body;
+  const { withdrawId, status } = req.body;
 
   const validStatuses = ["approved", "rejected"];
   if (!validStatuses.includes(status))
     return next(new ErrorHandler("Invalid status value", 400));
 
-  const user = await User.findById(userId);
+  const user = await User.findById(req.user);
   if (!user) return next(new ErrorHandler("User Not Found", 404));
 
   const withdrawRecord = await WithdrawHistory.findById(withdrawId);
-
   if (!withdrawRecord)
-    return next(new ErrorHandler("Payment Record Not Found", 404));
+    return next(new ErrorHandler("Withdraw record not found", 404));
 
   if (withdrawRecord.status === "approved")
-    return next(new ErrorHandler("Withdraw already verified", 400));
+    return next(new ErrorHandler("Withdrawal already verified", 400));
+
+  const withdrawUser = await User.findById(withdrawRecord.userId);
+  if (!withdrawUser) return next(new ErrorHandler("Requester not found", 404));
+
+  if (user.role === "admin") {
+    if (withdrawUser.parentUser.toString() !== user._id.toString()) {
+      return next(
+        new ErrorHandler("Unauthorized to approve this withdrawal", 403)
+      );
+    }
+  } else if (user.role === "super_admin") {
+    const adminIds = await User.find({ parentUser: user._id }).distinct("_id");
+    if (!adminIds.includes(withdrawUser.parentUser.toString())) {
+      return next(
+        new ErrorHandler("Unauthorized to approve this withdrawal", 403)
+      );
+    }
+  } else {
+    return next(new ErrorHandler("Unauthorized access", 403));
+  }
 
   if (status === "approved") {
-    if (user.amount < withdrawRecord.amount) {
-      return next(new ErrorHandler("Insufficient amount", 400));
+    if (withdrawUser.amount < withdrawRecord.amount) {
+      return next(new ErrorHandler("Insufficient funds", 400));
     }
-    user.amount -= withdrawRecord.amount;
-    try {
-      await user.save();
-    } catch (error) {
-      return next(new ErrorHandler("Error updating user balance", 500));
-    }
+    withdrawUser.amount -= withdrawRecord.amount;
+    await withdrawUser.save();
   }
+
   withdrawRecord.status = status;
-  try {
-    await withdrawRecord.save();
-  } catch (error) {
-    return next(new ErrorHandler("Error updating withdrawal record", 500));
-  }
+  await withdrawRecord.save();
 
   res.status(200).json({
     success: true,
-    message: "Withdraw status updated successfully",
+    message: `Withdrawal ${status} successfully`,
     withdrawRecord,
   });
 });
@@ -149,6 +171,6 @@ const changeWithdrawStatus = TryCatch(async (req, res, next) => {
 export {
   changeWithdrawStatus,
   depositHistory,
-  withdrawRequest,
-  withdrawStatus,
+  withdrawalHistory,
+  withdrawalRequest,
 };

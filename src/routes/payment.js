@@ -2,10 +2,10 @@ import express from "express";
 import {
   changeWithdrawStatus,
   depositHistory,
-  withdrawRequest,
-  withdrawStatus,
+  withdrawalHistory,
+  withdrawalRequest,
 } from "../controllers/payment.js";
-import { adminOnly, isAuthenticated } from "../middlewares/auth.js";
+import { adminOrSuperAdmin, isAuthenticated } from "../middlewares/auth.js";
 
 const app = express.Router();
 
@@ -13,10 +13,10 @@ app.use(isAuthenticated);
 
 app.get("/deposit-history", depositHistory);
 
-app.get("/status/withdraw", withdrawStatus);
+app.get("/withdrawal-history", withdrawalHistory);
 
-app.post("/request/withdraw", withdrawRequest);
+app.post("/withdrawal-request", withdrawalRequest);
 
-app.post("/withdrawstatus", adminOnly, changeWithdrawStatus);
+app.post("/withdrawal-status", adminOrSuperAdmin, changeWithdrawStatus);
 
 export default app;
