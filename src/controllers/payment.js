@@ -5,20 +5,37 @@ import { WithdrawHistory } from "../models/withdrawHistory.js";
 import { ErrorHandler } from "../utils/utility-class.js";
 
 const depositHistory = TryCatch(async (req, res, next) => {
-  const user = await User.findById(req.user).lean();
+  const user = await User.findById(req.user, "_id role").lean();
   if (!user) return next(new ErrorHandler("User not found", 404));
 
-  let query = {};
-  if (user.role === "user") query.userId = user._id;
-  else if (user.role === "admin") {
-    query.userId = await User.find({ parentUser: user._id }).distinct("_id");
-  } else if (user.role === "super_admin") {
-    query.userId = await User.find({ parentUser: user._id }).distinct("_id");
-  } else {
-    return next(new ErrorHandler("Unauthorized Access", 403));
-  }
+  const userIds = await User.find({ parentUser: user._id }, "_id").distinct(
+    "_id"
+  );
 
-  const history = await PaymentHistory.find(query)
+  if (!userIds.length)
+    return next(new ErrorHandler("No related users found.", 404));
+
+  const history = await PaymentHistory.find({ userId: { $in: userIds } })
+    .sort({ createdAt: -1 })
+    .lean();
+
+  return res.status(200).json({
+    success: true,
+    message: history.length
+      ? "Fetched deposit history successfully"
+      : "No deposit history found",
+    history,
+  });
+});
+
+const getUserDepositHistory = TryCatch(async (req, res, next) => {
+  const user = await User.findById(req.user, "_id role").lean();
+  if (!user) return next(new ErrorHandler("User not found", 404));
+
+  if (user.role === "super_admin")
+    return next(new ErrorHandler("Super Admin can't access this route", 400));
+
+  const history = await PaymentHistory.find({ userId: user._id })
     .sort({ createdAt: -1 })
     .lean();
 
@@ -32,21 +49,37 @@ const depositHistory = TryCatch(async (req, res, next) => {
 });
 
 const withdrawalHistory = TryCatch(async (req, res, next) => {
-  const user = await User.findById(req.user).lean();
+  const user = await User.findById(req.user, "_id role").lean();
   if (!user) return next(new ErrorHandler("User not found", 404));
 
-  let query = {};
+  const userIds = await User.find({ parentUser: user._id }, "_id").distinct(
+    "_id"
+  );
 
-  if (user.role === "user") query.userId = user._id;
-  else if (user.role === "admin") {
-    query.userId = await User.find({ parentUser: user._id }).distinct("_id");
-  } else if (user.role === "super_admin") {
-    query.userId = await User.find({ parentUser: user._id }).distinct("_id");
-  } else {
-    return next(new ErrorHandler("Unauthorized Access", 403));
-  }
+  if (!userIds.length)
+    return next(new ErrorHandler("No related users found.", 404));
 
-  const history = await WithdrawHistory.find(query)
+  const history = await WithdrawHistory.find({ userId: { $in: userIds } })
+    .sort({ createdAt: -1 })
+    .lean();
+
+  return res.status(200).json({
+    success: true,
+    message: history.length
+      ? "Fetched withdrawal history successfully"
+      : "No withdrawal history found",
+    history,
+  });
+});
+
+const getUserWithdrawlHistory = TryCatch(async (req, res, next) => {
+  const user = await User.findById(req.user, "_id role").lean();
+  if (!user) return next(new ErrorHandler("User not found", 404));
+
+  if (user.role === "super_admin")
+    return next(new ErrorHandler("Super Admin can't access this route", 400));
+
+  const history = await WithdrawHistory.find({ userId: user._id })
     .sort({ createdAt: -1 })
     .lean();
 
@@ -170,6 +203,8 @@ const changeWithdrawStatus = TryCatch(async (req, res, next) => {
 export {
   changeWithdrawStatus,
   depositHistory,
+  getUserDepositHistory,
+  getUserWithdrawlHistory,
   withdrawalHistory,
   withdrawalRequest,
 };
