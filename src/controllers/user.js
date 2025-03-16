@@ -4,6 +4,7 @@ import { TryCatch } from "../middlewares/error.js";
 import { User } from "../models/user.js";
 import { sendToken } from "../utils/features.js";
 import { ErrorHandler } from "../utils/utility-class.js";
+import { PaymentHistory } from "../models/paymentHistory.js";
 
 const newUser = TryCatch(async (req, res, next) => {
   const { name, email, password, currency, role, gender, amount } = req.body;
@@ -45,6 +46,13 @@ const newUser = TryCatch(async (req, res, next) => {
     currency: currency.toLowerCase(),
     role: role.toLowerCase(),
     parentUser: parentUser._id,
+  });
+
+  await PaymentHistory.create({
+    userId: user._id,
+    userName: user.name,
+    currency,
+    amount,
   });
 
   sendToken(res, user, 201, `${role} created successfully`);
@@ -215,6 +223,13 @@ const addAmount = TryCatch(async (req, res, next) => {
 
   targetUser.amount += amount;
   await targetUser.save();
+
+  await PaymentHistory.create({
+    userId: targetUser._id,
+    userName: targetUser.name,
+    currency: targetUser.currency,
+    amount,
+  });
 
   return res.status(200).json({
     success: true,

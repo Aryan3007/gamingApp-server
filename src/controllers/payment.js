@@ -4,29 +4,28 @@ import { User } from "../models/user.js";
 import { WithdrawHistory } from "../models/withdrawHistory.js";
 import { ErrorHandler } from "../utils/utility-class.js";
 
-const depositStatus = TryCatch(async (req, res, next) => {
-  const { userId } = req.query;
-  if (!userId) return next(new ErrorHandler("User ID is required", 400));
-
+const depositHistory = TryCatch(async (req, res, next) => {
   const user = await User.findById(req.user);
   if (!user) return next(new ErrorHandler("User not found", 404));
 
-  if (user.role !== "admin" && user._id.toString() !== userId) {
-    return next(
-      new ErrorHandler("You can only access your own deposit history", 403)
-    );
+  let query = {};
+  if (user.role === "user") query.userId = user._id;
+  else if (user.role === "admin") {
+    query.userId = await User.find({ parentUser: user._id }).distinct("_id");
+  } else if (user.role === "super_admin") {
+    query.userId = await User.find({ parentUser: user._id }).distinct("_id");
+  } else {
+    return next(new ErrorHandler("Unauthorized Access", 403));
   }
 
-  const depositHistory = await PaymentHistory.find({ userId });
-  const message =
-    depositHistory.length > 0
-      ? "Fetched your deposit history successfully"
-      : "No deposit history found";
+  const history = await PaymentHistory.find(query).lean();
 
   return res.status(200).json({
     success: true,
-    message,
-    depositHistory,
+    message: history.length
+      ? "Fetched deposit history successfully"
+      : "No deposit history found",
+    history,
   });
 });
 
@@ -53,74 +52,6 @@ const withdrawStatus = TryCatch(async (req, res, next) => {
     success: true,
     message,
     withdrawHistory,
-  });
-});
-
-const paymentRequest = TryCatch(async (req, res, next) => {
-  const { userId } = req.query;
-  const { amount, referenceNumber } = req.body;
-
-  if (!amount || !referenceNumber)
-    return next(new ErrorHandler("Please enter all fields", 400));
-
-  if (amount <= 0)
-    return next(new ErrorHandler("Please enter valid amount", 400));
-
-  const user = await User.findById(userId);
-  if (!user) return next(new ErrorHandler("User Not Found", 404));
-
-  const isDuplicate = await PaymentHistory.findOne({ referenceNumber });
-  if (isDuplicate)
-    return next(new ErrorHandler("Reference number already exists", 400));
-
-  const paymentHistory = await PaymentHistory.create({
-    userId,
-    amount,
-    referenceNumber,
-  });
-
-  return res.status(201).json({
-    success: true,
-    message: "Payment details recorded successfully",
-    paymentHistory,
-  });
-});
-
-const changePaymentStatus = TryCatch(async (req, res, next) => {
-  const { userId, paymentId, status } = req.body;
-
-  const validStatuses = ["completed", "failed", "pending"];
-  if (!validStatuses.includes(status)) {
-    return next(new ErrorHandler("Invalid status value", 400));
-  }
-
-  const user = await User.findById(userId);
-  if (!user) return next(new ErrorHandler("User Not Found", 404));
-
-  const paymentRecord = await PaymentHistory.findById(paymentId);
-
-  if (!paymentRecord)
-    return next(new ErrorHandler("Payment Record Not Found", 404));
-
-  if (paymentRecord.status === "completed")
-    return next(new ErrorHandler("Payment already verified", 400));
-
-  if (paymentRecord.status === "failed" && status !== "pending")
-    return next(
-      new ErrorHandler("Cannot update a failed payment to this status", 400)
-    );
-
-  paymentRecord.status = status;
-  try {
-    await paymentRecord.save();
-  } catch (error) {
-    return next(new ErrorHandler("Error updating payment record", 500));
-  }
-
-  res.status(200).json({
-    success: true,
-    message: "Payment status updated successfully",
-    paymentRecord,
   });
 });
 
@@ -216,10 +147,8 @@ const changeWithdrawStatus = TryCatch(async (req, res, next) => {
 });
 
 export {
-  changePaymentStatus,
   changeWithdrawStatus,
-  depositStatus,
-  paymentRequest,
+  depositHistory,
   withdrawRequest,
   withdrawStatus,
 };

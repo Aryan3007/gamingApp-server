@@ -1,27 +1,21 @@
 import express from "express";
-import { adminOnly, isAuthenticated } from "../middlewares/auth.js";
 import {
-  changePaymentStatus,
   changeWithdrawStatus,
-  depositStatus,
-  paymentRequest,
+  depositHistory,
   withdrawRequest,
   withdrawStatus,
 } from "../controllers/payment.js";
+import { adminOnly, isAuthenticated } from "../middlewares/auth.js";
 
 const app = express.Router();
 
 app.use(isAuthenticated);
 
-app.get("/status/deposit", depositStatus);
+app.get("/deposit-history", depositHistory);
 
 app.get("/status/withdraw", withdrawStatus);
 
-app.post("/request/payment", adminOnly, paymentRequest);
-
 app.post("/request/withdraw", withdrawRequest);
-
-app.post("/paymentstatus", adminOnly, changePaymentStatus);
 
 app.post("/withdrawstatus", adminOnly, changeWithdrawStatus);
 

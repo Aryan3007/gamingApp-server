@@ -7,18 +7,17 @@ const schema = new Schema(
       required: true,
       ref: "User",
     },
+    userName: {
+      type: String,
+      required: true,
+    },
+    currency: {
+      type: String,
+      required: true,
+    },
     amount: {
       type: Number,
-      default: null,
-    },
-    referenceNumber: {
-      type: String,
-      default: null,
-    },
-    status: {
-      type: String,
-      enum: ["completed", "pending", "failed"],
-      default: "pending",
+      required: true,
     },
   },
   {
