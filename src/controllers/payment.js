@@ -140,8 +140,7 @@ const changeWithdrawStatus = TryCatch(async (req, res, next) => {
       );
     }
   } else if (user.role === "super_admin") {
-    const adminIds = await User.find({ parentUser: user._id }).distinct("_id");
-    if (!adminIds.includes(withdrawUser.parentUser.toString())) {
+    if (withdrawUser.parentUser.toString() !== user._id.toString()) {
       return next(
         new ErrorHandler("Unauthorized to approve this withdrawal", 403)
       );
