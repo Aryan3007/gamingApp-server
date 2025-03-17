@@ -1,8 +1,10 @@
 import express from "express";
-import { cricketScore } from "../controllers/score.js";
+import { cricketScore, otherScores } from "../controllers/score.js";
 
 const app = express.Router();
 
 app.get("/cricket", cricketScore);
+
+app.get("/scores", otherScores);
 
 export default app;
