@@ -55,7 +55,7 @@ app.use("/api/v1/user", userRoute);
 app.use("/api/v1/payment", paymentRoute);
 app.use("/api/v1/bet", betRoute);
 app.use("/api/v1/misc", miscRoute);
-app.use("api/v1/scores", scoreRoute);
+app.use("/api/v1/scores", scoreRoute);
 app.get("/api/v1/getMarkets", getAllMarkets);
 
 app.get("/", (req, res) => {
