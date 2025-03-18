@@ -1,10 +1,11 @@
 import { compare } from "bcrypt";
 import mongoose from "mongoose";
 import { TryCatch } from "../middlewares/error.js";
+import { PaymentHistory } from "../models/paymentHistory.js";
 import { User } from "../models/user.js";
 import { sendToken } from "../utils/features.js";
+import { calculateTotalExposure } from "../utils/helper.js";
 import { ErrorHandler } from "../utils/utility-class.js";
-import { PaymentHistory } from "../models/paymentHistory.js";
 
 const newUser = TryCatch(async (req, res, next) => {
   const { name, email, password, currency, role, gender, amount } = req.body;
@@ -328,6 +329,6 @@ export {
   getAllUsers,
   getMyProfile,
   login,
-  reduceAmount,
   newUser,
+  reduceAmount,
 };
