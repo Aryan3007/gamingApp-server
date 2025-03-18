@@ -68,11 +68,6 @@ const login = TryCatch(async (req, res, next) => {
   const user = await User.findOne({ email }).select("+password");
   if (!user) return next(new ErrorHandler("Invalid Username or Password", 404));
 
-  if (user.status === "banned")
-    return next(
-      new ErrorHandler("Your account is banned. Please contact support.", 403)
-    );
-
   const isMatch = await compare(password, user.password);
   if (!isMatch)
     return next(new ErrorHandler("Invalid Username or Password", 404));
@@ -190,6 +185,7 @@ const addAmount = TryCatch(async (req, res, next) => {
 
   const requester = await User.findById(req.user);
   if (!requester) return next(new ErrorHandler("Unauthorized", 401));
+
   if (requester.status === "banned")
     return next(new ErrorHandler("Banned users cannot receive funds.", 400));
 
@@ -212,7 +208,8 @@ const addAmount = TryCatch(async (req, res, next) => {
       );
     }
 
-    if (requester.amount < amount)
+    const exposure = await calculateTotalExposure(requester._id);
+    if (requester.amount - exposure < amount)
       return next(new ErrorHandler("Insufficient balance", 400));
 
     requester.amount -= amount;
@@ -256,7 +253,8 @@ const reduceAmount = TryCatch(async (req, res, next) => {
   const targetUser = await User.findById(id);
   if (!targetUser) return next(new ErrorHandler("User Not Found", 404));
 
-  if (targetUser.amount < amount)
+  const exposure = await calculateTotalExposure(targetUser._id);
+  if (targetUser.amount - exposure < amount)
     return next(new ErrorHandler("Target user has insufficient balance", 400));
 
   if (requester.role === "super_admin") {
