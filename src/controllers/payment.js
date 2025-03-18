@@ -98,6 +98,9 @@ const withdrawalRequest = TryCatch(async (req, res, next) => {
   const requester = await User.findById(req.user).lean();
   if (!requester) return next(new ErrorHandler("User not found", 404));
 
+  if (requester.status === "banned")
+    return next(new ErrorHandler("You can't perform this action", 400));
+
   if (!amount || !accNo || !ifsc || !contact || !bankName || !receiverName)
     return next(new ErrorHandler("All fields are required", 400));
 
