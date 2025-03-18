@@ -172,6 +172,9 @@ const changeUserStatus = TryCatch(async (req, res, next) => {
       );
     }
 
+    if (requestingUser.status === "banned")
+      return next(new ErrorHandler("You can't perform this operation", 400));
+
     if (status.toLowerCase() === "banned")
       requestingUser.amount += targetUser.amount;
     else requestingUser.amount -= targetUser.amount;
@@ -224,6 +227,9 @@ const addAmount = TryCatch(async (req, res, next) => {
         new ErrorHandler("Master can add money only to their own users", 403)
       );
     }
+
+    if (requestingUser.status === "banned")
+      return next(new ErrorHandler("You can't perform this operation", 400));
 
     const exposure = await calculateTotalExposure(requester._id);
     if (requester.amount - exposure < amount)
@@ -289,6 +295,9 @@ const reduceAmount = TryCatch(async (req, res, next) => {
         new ErrorHandler("Master can add money only to their own users", 403)
       );
     }
+
+    if (requestingUser.status === "banned")
+      return next(new ErrorHandler("You can't perform this operation", 400));
 
     requester.amount += amount;
     await requester.save();
