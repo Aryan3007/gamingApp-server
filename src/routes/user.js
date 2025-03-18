@@ -6,6 +6,7 @@ import {
   getMyProfile,
   login,
   newUser,
+  reduceAmount,
 } from "../controllers/user.js";
 import { adminOrSuperAdmin, isAuthenticated } from "../middlewares/auth.js";
 
@@ -24,5 +25,7 @@ app.get("/allusers", adminOrSuperAdmin, getAllUsers);
 app.post("/userstatus/:id", adminOrSuperAdmin, changeUserStatus);
 
 app.put("/addamount/:id", adminOrSuperAdmin, addAmount);
+
+app.put("/reduceamount/:id", adminOrSuperAdmin, reduceAmount);
 
 export default app;

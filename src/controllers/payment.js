@@ -116,7 +116,7 @@ const withdrawalRequest = TryCatch(async (req, res, next) => {
   let parentUser;
   if (requester.role === "user") {
     parentUser = requester.parentUser;
-  } else if (requester.role === "admin") {
+  } else if (requester.role === "master") {
     parentUser = requester.parentUser;
   } else {
     return next(new ErrorHandler("Unauthorized access", 403));
@@ -166,7 +166,7 @@ const changeWithdrawStatus = TryCatch(async (req, res, next) => {
   const withdrawUser = await User.findById(withdrawRecord.userId);
   if (!withdrawUser) return next(new ErrorHandler("Requester not found", 404));
 
-  if (user.role === "admin") {
+  if (user.role === "master") {
     if (withdrawUser.parentUser.toString() !== user._id.toString()) {
       return next(
         new ErrorHandler("Unauthorized to approve this withdrawal", 403)

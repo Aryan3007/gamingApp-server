@@ -22,14 +22,14 @@ const newUser = TryCatch(async (req, res, next) => {
   if (password.length < 6)
     return next(new ErrorHandler("Password too short (min 6 chars)", 400));
 
-  const validRoles = ["user", "admin"];
+  const validRoles = ["user", "master"];
   if (!validRoles.includes(role.toLowerCase()))
     return next(new ErrorHandler("Invalid role", 400));
 
   let user = await User.findOne({ email });
   if (user) return next(new ErrorHandler("Account already exists", 400));
 
-  if (parentUser.role === "admin") {
+  if (parentUser.role === "master") {
     if (parentUser.amount < amount)
       return next(new ErrorHandler("Insufficient balance", 400));
 
@@ -97,7 +97,7 @@ const getAllUsers = TryCatch(async (req, res, next) => {
   let result;
 
   if (user.role === "super_admin") {
-    const admins = await User.find({ role: "admin" }).lean();
+    const admins = await User.find({ role: "master" }).lean();
     const adminIds = admins.map((admin) => admin._id);
 
     const users = await User.find({ parentUser: { $in: adminIds } }).lean();
@@ -106,7 +106,7 @@ const getAllUsers = TryCatch(async (req, res, next) => {
       admin,
       users: users.filter((u) => String(u.parentUser) === String(admin._id)),
     }));
-  } else if (user.role === "admin") {
+  } else if (user.role === "master") {
     result = await User.find({ parentUser: user._id }).lean();
   } else {
     return next(new ErrorHandler("Unauthorized Access", 403));
@@ -137,7 +137,7 @@ const changeUserStatus = TryCatch(async (req, res, next) => {
   if (!targetUser) return next(new ErrorHandler("Invalid ID", 400));
 
   if (requestingUser.role === "super_admin") {
-    if (targetUser.role !== "admin") {
+    if (targetUser.role !== "master") {
       return next(
         new ErrorHandler("Super admin can only ban/unban admins", 403)
       );
@@ -150,7 +150,7 @@ const changeUserStatus = TryCatch(async (req, res, next) => {
       { parentUser: targetUser._id },
       { $set: { status: status.toLowerCase() } }
     );
-  } else if (requestingUser.role === "admin") {
+  } else if (requestingUser.role === "master") {
     if (
       targetUser.role !== "user" ||
       targetUser.parentUser.toString() !== requestingUser._id.toString()
@@ -197,18 +197,18 @@ const addAmount = TryCatch(async (req, res, next) => {
   if (!targetUser) return next(new ErrorHandler("User Not Found", 404));
 
   if (requester.role === "super_admin") {
-    if (targetUser.role !== "admin") {
+    if (targetUser.role !== "master") {
       return next(
-        new ErrorHandler("Super Admin can add money only to Admins", 403)
+        new ErrorHandler("Super Admin can add money only to Master", 403)
       );
     }
-  } else if (requester.role === "admin") {
+  } else if (requester.role === "master") {
     if (
       targetUser.role !== "user" ||
       targetUser.parentUser.toString() !== requester._id.toString()
     ) {
       return next(
-        new ErrorHandler("Admin can add money only to their own users", 403)
+        new ErrorHandler("Master can add money only to their own users", 403)
       );
     }
 
@@ -238,11 +238,72 @@ const addAmount = TryCatch(async (req, res, next) => {
   });
 });
 
+const reduceAmount = TryCatch(async (req, res, next) => {
+  const { id } = req.params;
+  const { amount } = req.body;
+
+  if (!amount || isNaN(amount) || amount <= 0)
+    return next(new ErrorHandler("Please enter a valid amount", 400));
+
+  if (!mongoose.Types.ObjectId.isValid(id))
+    return next(new ErrorHandler("Invalid User ID", 400));
+
+  const requester = await User.findById(req.user);
+  if (!requester) return next(new ErrorHandler("Unauthorized", 401));
+  if (requester.status === "banned")
+    return next(new ErrorHandler("Banned users cannot receive funds.", 400));
+
+  const targetUser = await User.findById(id);
+  if (!targetUser) return next(new ErrorHandler("User Not Found", 404));
+
+  if (targetUser.amount < amount)
+    return next(new ErrorHandler("Target user has insufficient balance", 400));
+
+  if (requester.role === "super_admin") {
+    if (targetUser.role !== "master") {
+      return next(
+        new ErrorHandler("Super Admin can add money only to Master", 403)
+      );
+    }
+  } else if (requester.role === "master") {
+    if (
+      targetUser.role !== "user" ||
+      targetUser.parentUser.toString() !== requester._id.toString()
+    ) {
+      return next(
+        new ErrorHandler("Master can add money only to their own users", 403)
+      );
+    }
+
+    requester.amount += amount;
+    await requester.save();
+  } else {
+    return next(new ErrorHandler("Unauthorized action", 403));
+  }
+
+  targetUser.amount -= amount;
+  await targetUser.save();
+
+  await PaymentHistory.create({
+    userId: targetUser._id,
+    userName: targetUser.name,
+    currency: targetUser.currency,
+    amount,
+  });
+
+  return res.status(200).json({
+    success: true,
+    message: `${amount} Reduce successfully`,
+    user: targetUser,
+  });
+});
+
 export {
   addAmount,
   changeUserStatus,
   getAllUsers,
   getMyProfile,
   login,
+  reduceAmount,
   newUser,
 };
