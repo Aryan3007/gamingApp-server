@@ -94,7 +94,10 @@ const getAllUsers = TryCatch(async (req, res, next) => {
     return Promise.all(
       users.map(async (u) => ({
         ...u,
-        amount: u.amount - (await calculateTotalExposure(u._id)),
+        amount:
+          u.status === "banned"
+            ? 0
+            : u.amount - (await calculateTotalExposure(u._id)),
       }))
     );
   };
@@ -112,7 +115,10 @@ const getAllUsers = TryCatch(async (req, res, next) => {
       admins.map(async (admin) => ({
         admin: {
           ...admin,
-          amount: admin.amount - (await calculateTotalExposure(admin._id)),
+          amount:
+            admin.status === "banned"
+              ? 0
+              : admin.amount - (await calculateTotalExposure(admin._id)),
         },
         users: users.filter((u) => String(u.parentUser) === String(admin._id)),
       }))
