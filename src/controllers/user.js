@@ -288,7 +288,7 @@ const reduceAmount = TryCatch(async (req, res, next) => {
     userId: targetUser._id,
     userName: targetUser.name,
     currency: targetUser.currency,
-    amount,
+    amount: amount * -1,
   });
 
   return res.status(200).json({
