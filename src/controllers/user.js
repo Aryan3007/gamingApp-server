@@ -89,20 +89,37 @@ const getAllUsers = TryCatch(async (req, res, next) => {
   const user = await User.findById(req.user);
   if (!user) return next(new ErrorHandler("User Not Found", 404));
 
+  const adjustAmount = async (users) => {
+    return Promise.all(
+      users.map(async (u) => ({
+        ...u,
+        amount: u.amount - (await calculateTotalExposure(u._id)),
+      }))
+    );
+  };
+
   let result;
 
   if (user.role === "super_admin") {
     const admins = await User.find({ role: "master" }).lean();
     const adminIds = admins.map((admin) => admin._id);
 
-    const users = await User.find({ parentUser: { $in: adminIds } }).lean();
+    let users = await User.find({ parentUser: { $in: adminIds } }).lean();
+    users = await adjustAmount(users);
 
-    result = admins.map((admin) => ({
-      admin,
-      users: users.filter((u) => String(u.parentUser) === String(admin._id)),
-    }));
+    result = await Promise.all(
+      admins.map(async (admin) => ({
+        admin: {
+          ...admin,
+          amount: admin.amount - (await calculateTotalExposure(admin._id)),
+        },
+        users: users.filter((u) => String(u.parentUser) === String(admin._id)),
+      }))
+    );
   } else if (user.role === "master") {
-    result = await User.find({ parentUser: user._id }).lean();
+    let users = await User.find({ parentUser: user._id }).lean();
+    users = await adjustAmount(users);
+    result = users;
   } else {
     return next(new ErrorHandler("Unauthorized Access", 403));
   }
