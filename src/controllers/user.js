@@ -92,6 +92,9 @@ const changePassword = TryCatch(async (req, res, next) => {
   const isMatch = await compare(oldPassword, user.password);
   if (!isMatch) return next(new ErrorHandler("Invalid old password", 400));
 
+  if (newPassword.length < 6)
+    return next(new ErrorHandler("Password too short (min 6 chars)", 400));
+
   user.password = newPassword;
   await user.save();
 
