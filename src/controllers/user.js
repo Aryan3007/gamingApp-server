@@ -34,7 +34,8 @@ const newUser = TryCatch(async (req, res, next) => {
     if (parentUser.status === "banned")
       return next(new ErrorHandler("You can't perform this action", 400));
 
-    if (parentUser.amount < amount)
+    const exposure = await calculateTotalExposure(parentUser._id);
+    if (parentUser.amount - exposure < amount)
       return next(new ErrorHandler("Insufficient balance", 400));
 
     parentUser.amount -= amount;
