@@ -83,19 +83,16 @@ const login = TryCatch(async (req, res, next) => {
 const changePassword = TryCatch(async (req, res, next) => {
   const { oldPassword, newPassword } = req.body;
 
-  if (!oldPassword || !newPassword)
-    return next(new ErrorHandler("Old and new passwords are required", 400));
-
   const user = await User.findById(req.user).select("+password");
   if (!user) return next(new ErrorHandler("User Not Found", 404));
 
+  if (!oldPassword || !newPassword)
+    return next(new ErrorHandler("Old and new password are required", 400));
+
   const isMatch = await compare(oldPassword, user.password);
-  if (!isMatch) return next(new ErrorHandler("Invalid old password", 401));
+  if (!isMatch) return next(new ErrorHandler("Invalid old password", 400));
 
-  if (oldPassword === newPassword)
-    return next(new ErrorHandler("New password must be different", 400));
-
-  user.password = await hash(newPassword, 10);
+  user.password = newPassword;
   await user.save();
 
   return res.status(200).json({
