@@ -1,4 +1,4 @@
-import { compare } from "bcrypt";
+import { compare, hash } from "bcrypt";
 import mongoose from "mongoose";
 import { TryCatch } from "../middlewares/error.js";
 import { PaymentHistory } from "../models/paymentHistory.js";
