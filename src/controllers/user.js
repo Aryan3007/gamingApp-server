@@ -1,8 +1,11 @@
 import { compare } from "bcrypt";
 import mongoose from "mongoose";
 import { TryCatch } from "../middlewares/error.js";
+import { Bet } from "../models/bet.js";
+import { Margin } from "../models/margin.js";
 import { PaymentHistory } from "../models/paymentHistory.js";
 import { User } from "../models/user.js";
+import { WithdrawHistory } from "../models/withdrawHistory.js";
 import { sendToken } from "../utils/features.js";
 import { calculateTotalExposure } from "../utils/helper.js";
 import { ErrorHandler } from "../utils/utility-class.js";
