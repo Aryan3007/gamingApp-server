@@ -270,7 +270,7 @@ const addAmount = TryCatch(async (req, res, next) => {
       );
     }
 
-    if (requestingUser.status === "banned")
+    if (requester.status === "banned")
       return next(new ErrorHandler("You can't perform this operation", 400));
 
     const exposure = await calculateTotalExposure(requester._id);
