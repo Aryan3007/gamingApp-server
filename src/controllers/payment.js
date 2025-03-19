@@ -50,7 +50,7 @@ const getUserDepositHistory = TryCatch(async (req, res, next) => {
 });
 
 const withdrawalHistory = TryCatch(async (req, res, next) => {
-  const user = await User.findById(req.user, "_id name role").lean();
+  const user = await User.findById(req.user, "_id role").lean();
   if (!user) return next(new ErrorHandler("User not found", 404));
 
   const userIds = await User.find({ parentUser: user._id }, "_id").distinct(
@@ -70,12 +70,11 @@ const withdrawalHistory = TryCatch(async (req, res, next) => {
       ? "Fetched withdrawal history successfully"
       : "No withdrawal history found",
     history,
-    user,
   });
 });
 
 const getUserWithdrawlHistory = TryCatch(async (req, res, next) => {
-  const user = await User.findById(req.user, "_id name role").lean();
+  const user = await User.findById(req.user, "_id role").lean();
   if (!user) return next(new ErrorHandler("User not found", 404));
 
   if (user.role === "super_admin")
@@ -91,7 +90,6 @@ const getUserWithdrawlHistory = TryCatch(async (req, res, next) => {
       ? "Fetched withdrawal history successfully"
       : "No withdrawal history found",
     history,
-    user,
   });
 });
 
@@ -124,6 +122,7 @@ const withdrawalRequest = TryCatch(async (req, res, next) => {
 
   const withdrawHistory = await WithdrawHistory.create({
     userId: requester._id,
+    userName: requester.name,
     parentUser,
     amount,
   });

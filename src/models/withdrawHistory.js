@@ -12,6 +12,10 @@ const schema = new Schema(
       required: true,
       ref: "User",
     },
+    userName: {
+      type: String,
+      required: true,
+    },
     amount: {
       type: Number,
       required: true,
