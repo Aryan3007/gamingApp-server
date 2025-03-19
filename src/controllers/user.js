@@ -372,11 +372,24 @@ const deleteUser = TryCatch(async (req, res, next) => {
   const targetUser = await User.findById(id);
   if (!targetUser) return next(new ErrorHandler("User Not Found", 404));
 
+  const deleteRelatedData = async (userId) => {
+    await Promise.all([
+      Bet.deleteMany({ userId }),
+      Margin.deleteMany({ userId }),
+      PaymentHistory.deleteMany({ userId }),
+      WithdrawHistory.deleteMany({ userId }),
+    ]);
+  };
+
   if (requester.role === "super_admin") {
     if (targetUser.role !== "master")
       return next(new ErrorHandler("Super Admin can delete only Masters", 403));
 
+    const users = await User.find({ parentUser: targetUser._id });
+    await Promise.all(users.map((user) => deleteRelatedData(user._id)));
     await User.deleteMany({ parentUser: targetUser._id });
+
+    await deleteRelatedData(targetUser._id);
     await User.findByIdAndDelete(targetUser._id);
   } else if (requester.role === "master") {
     if (
@@ -390,6 +403,7 @@ const deleteUser = TryCatch(async (req, res, next) => {
     requester.amount += targetUser.amount;
     await requester.save();
 
+    await deleteRelatedData(targetUser._id);
     await User.findByIdAndDelete(targetUser._id);
   } else {
     return next(new ErrorHandler("Unauthorized Action", 403));
