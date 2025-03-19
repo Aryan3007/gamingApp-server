@@ -337,9 +337,53 @@ const reduceAmount = TryCatch(async (req, res, next) => {
   });
 });
 
+const deleteUser = TryCatch(async (req, res, next) => {
+  const { id } = req.params;
+  if (!mongoose.Types.ObjectId.isValid(id))
+    return next(new ErrorHandler("Invalid User ID", 400));
+
+  const requester = await User.findById(req.user);
+  if (!requester) return next(new ErrorHandler("Unauthorized", 401));
+
+  const targetUser = await User.findById(id);
+  if (!targetUser) return next(new ErrorHandler("User Not Found", 404));
+
+  if (requester.role === "super_admin") {
+    if (targetUser.role !== "master")
+      return next(new ErrorHandler("Super Admin can delete only Masters", 403));
+
+    await User.deleteMany({ parentUser: targetUser._id });
+    await User.findByIdAndDelete(targetUser._id);
+  } else if (requester.role === "master") {
+    if (
+      targetUser.role !== "user" ||
+      String(targetUser.parentUser) !== String(requester._id)
+    )
+      return next(
+        new ErrorHandler("Master can delete only their own users", 403)
+      );
+
+    requester.amount += targetUser.amount;
+    await requester.save();
+
+    await User.findByIdAndDelete(targetUser._id);
+  } else {
+    return next(new ErrorHandler("Unauthorized Action", 403));
+  }
+
+  return res.status(200).json({
+    success: true,
+    message:
+      requester.role === "super_admin"
+        ? `Master and its users deleted successfully`
+        : "User deleted and balance transferred to master",
+  });
+});
+
 export {
   addAmount,
   changeUserStatus,
+  deleteUser,
   getAllUsers,
   getMyProfile,
   login,

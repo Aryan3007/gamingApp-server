@@ -2,6 +2,7 @@ import express from "express";
 import {
   addAmount,
   changeUserStatus,
+  deleteUser,
   getAllUsers,
   getMyProfile,
   login,
@@ -27,5 +28,7 @@ app.post("/userstatus/:id", adminOrSuperAdmin, changeUserStatus);
 app.put("/addamount/:id", adminOrSuperAdmin, addAmount);
 
 app.put("/reduceamount/:id", adminOrSuperAdmin, reduceAmount);
+
+app.post("/deleteuser/:id", adminOrSuperAdmin, deleteUser);
 
 export default app;
