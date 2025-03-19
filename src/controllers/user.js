@@ -96,13 +96,14 @@ const getAllUsers = TryCatch(async (req, res, next) => {
 
   const adjustAmount = async (users) => {
     return Promise.all(
-      users.map(async (u) => ({
-        ...u,
-        amount:
-          u.status === "banned"
-            ? 0
-            : u.amount - (await calculateTotalExposure(u._id)),
-      }))
+      users.map(async (u) => {
+        const exposure = await calculateTotalExposure(u._id);
+        return {
+          ...u,
+          exposure,
+          amount: u.status === "banned" ? 0 : u.amount - exposure,
+        };
+      })
     );
   };
 
@@ -116,16 +117,19 @@ const getAllUsers = TryCatch(async (req, res, next) => {
     users = await adjustAmount(users);
 
     result = await Promise.all(
-      admins.map(async (admin) => ({
-        admin: {
-          ...admin,
-          amount:
-            admin.status === "banned"
-              ? 0
-              : admin.amount - (await calculateTotalExposure(admin._id)),
-        },
-        users: users.filter((u) => String(u.parentUser) === String(admin._id)),
-      }))
+      admins.map(async (admin) => {
+        const exposure = await calculateTotalExposure(admin._id);
+        return {
+          admin: {
+            ...admin,
+            exposure,
+            amount: admin.status === "banned" ? 0 : admin.amount - exposure,
+          },
+          users: users.filter(
+            (u) => String(u.parentUser) === String(admin._id)
+          ),
+        };
+      })
     );
   } else if (user.role === "master") {
     let users = await User.find({ parentUser: user._id }).lean();
