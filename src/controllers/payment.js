@@ -2,6 +2,7 @@ import { TryCatch } from "../middlewares/error.js";
 import { PaymentHistory } from "../models/paymentHistory.js";
 import { User } from "../models/user.js";
 import { WithdrawHistory } from "../models/withdrawHistory.js";
+import { calculateTotalExposure } from "../utils/helper.js";
 import { ErrorHandler } from "../utils/utility-class.js";
 
 const depositHistory = TryCatch(async (req, res, next) => {
@@ -93,7 +94,7 @@ const getUserWithdrawlHistory = TryCatch(async (req, res, next) => {
 });
 
 const withdrawalRequest = TryCatch(async (req, res, next) => {
-  const { amount, accNo, ifsc, contact, bankName, receiverName } = req.body;
+  const { amount } = req.body;
 
   const requester = await User.findById(req.user).lean();
   if (!requester) return next(new ErrorHandler("User not found", 404));
@@ -101,25 +102,13 @@ const withdrawalRequest = TryCatch(async (req, res, next) => {
   if (requester.status === "banned")
     return next(new ErrorHandler("You can't perform this action", 400));
 
-  if (!amount || !accNo || !ifsc || !contact || !bankName || !receiverName)
-    return next(new ErrorHandler("All fields are required", 400));
-
-  if (isNaN(amount) || amount <= 100)
+  if (!amount || isNaN(amount) || amount <= 100)
     return next(
       new ErrorHandler("Invalid amount. Enter a number greater than 100.", 400)
     );
 
-  if (contact.toString().length !== 10)
-    return next(new ErrorHandler("Invalid contact number", 400));
-
-  const ifscRegex = /^[A-Z]{4}0[A-Z0-9]{6}$/;
-  if (!ifscRegex.test(ifsc))
-    return next(new ErrorHandler("Invalid IFSC code format", 400));
-
   let parentUser;
-  if (requester.role === "user") {
-    parentUser = requester.parentUser;
-  } else if (requester.role === "master") {
+  if (requester.role === "user" || requester.role === "master") {
     parentUser = requester.parentUser;
   } else {
     return next(new ErrorHandler("Unauthorized access", 403));
@@ -127,17 +116,13 @@ const withdrawalRequest = TryCatch(async (req, res, next) => {
 
   if (!parentUser) return next(new ErrorHandler("Parent user not found", 404));
 
-  if (requester.amount < amount)
+  const exposure = await calculateTotalExposure(requester._id);
+  if (requester.amount - exposure < amount)
     return next(new ErrorHandler("Insufficient balance for withdrawal", 400));
 
   const withdrawHistory = await WithdrawHistory.create({
     userId: requester._id,
     parentUser,
-    accNo,
-    ifsc,
-    contact,
-    bankName,
-    receiverName,
     amount,
   });
 
