@@ -1,6 +1,7 @@
 import express from "express";
 import {
   addAmount,
+  changePassword,
   changeUserStatus,
   deleteUser,
   getAllUsers,
@@ -18,6 +19,8 @@ app.post("/login", login);
 app.use(isAuthenticated);
 
 app.post("/new", adminOrSuperAdmin, newUser);
+
+app.post("/change-password", changePassword);
 
 app.get("/me", getMyProfile);
 
