@@ -5,6 +5,7 @@ const bankSchema = new Schema(
     accountNumber: {
       type: String,
       required: true,
+      unique: true,
     },
     ifscCode: {
       type: String,

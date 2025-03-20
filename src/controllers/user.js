@@ -288,9 +288,12 @@ const addAmount = TryCatch(async (req, res, next) => {
 
   await PaymentHistory.create({
     userId: targetUser._id,
+    parentUser: targetUser.parentUser,
     userName: targetUser.name,
     currency: targetUser.currency,
     amount,
+    referenceNumber: "Amount is added",
+    status: "approved",
   });
 
   return res.status(200).json({
@@ -352,9 +355,12 @@ const reduceAmount = TryCatch(async (req, res, next) => {
 
   await PaymentHistory.create({
     userId: targetUser._id,
+    parentUser: targetUser.parentUser,
     userName: targetUser.name,
     currency: targetUser.currency,
     amount: amount * -1,
+    referenceNumber: "Amount is deducted",
+    status: "approved",
   });
 
   return res.status(200).json({

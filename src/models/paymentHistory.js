@@ -7,6 +7,11 @@ const schema = new Schema(
       required: true,
       ref: "User",
     },
+    parentUser: {
+      type: String,
+      required: true,
+      ref: "User",
+    },
     userName: {
       type: String,
       required: true,
@@ -18,6 +23,15 @@ const schema = new Schema(
     amount: {
       type: Number,
       required: true,
+    },
+    referenceNumber: {
+      type: String,
+      default: null,
+    },
+    status: {
+      type: String,
+      enum: ["approved", "rejected", "pending"],
+      default: "pending",
     },
   },
   {
