@@ -1,9 +1,38 @@
 import { TryCatch } from "../middlewares/error.js";
 import { PaymentHistory } from "../models/paymentHistory.js";
+import { UpiId } from "../models/upiId.js";
 import { User } from "../models/user.js";
 import { WithdrawHistory } from "../models/withdrawHistory.js";
 import { calculateTotalExposure } from "../utils/helper.js";
 import { ErrorHandler } from "../utils/utility-class.js";
+
+export const createPaymentIntent = TryCatch(async (req, res, next) => {
+  const { amount } = req.body;
+  if (!amount) return next(new ErrorHandler("Please enter amount", 400));
+  if (amount < 0)
+    return next(new ErrorHandler("Please enter valid amount", 400));
+
+  const upiIds = await UpiId.find();
+  const randomIndex = Math.floor(Math.random() * upiIds.length);
+  const upiId = upiIds[randomIndex];
+  const receiverName = "Shaktiex";
+  const currency = "INR";
+
+  const upiLink = `upi://pay?pa=${upiId.upiId}&pn=${receiverName}&am=${Number(
+    amount
+  )}&cu=${currency}`;
+
+  QRCode.toDataURL(upiLink, (err, url) => {
+    if (err) return next(new ErrorHandler("Error in generating QR Code", 400));
+
+    return res.status(201).json({
+      success: true,
+      upiId: upiId.upiId,
+      amount,
+      url,
+    });
+  });
+});
 
 const depositHistory = TryCatch(async (req, res, next) => {
   const user = await User.findById(req.user, "_id role").lean();
@@ -113,11 +142,13 @@ const changeDepositStatus = TryCatch(async (req, res, next) => {
   const depositUser = await User.findById(depositRecord.userId);
   if (!depositUser) return next(new ErrorHandler("Requester not found", 404));
 
-  if (user.role === "master" && !depositUser.parentUser.equals(user._id))
-    return next(new ErrorHandler("Unauthorized to approve this deposit", 403));
-
-  if (user.role !== "master")
-    return next(new ErrorHandler("Unauthorized access", 403));
+  if (user.role === "master") {
+    if (depositUser.parentUser.toString() !== user._id.toString()) {
+      return next(
+        new ErrorHandler("Unauthorized to approve this deposit", 403)
+      );
+    }
+  } else return next(new ErrorHandler("Unauthorized access", 403));
 
   if (status === "approved") {
     const exposure = await calculateTotalExposure(user._id);
