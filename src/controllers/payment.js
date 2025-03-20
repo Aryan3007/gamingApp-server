@@ -156,10 +156,10 @@ const changeDepositStatus = TryCatch(async (req, res, next) => {
       return next(new ErrorHandler("Insufficient funds", 400));
 
     await Promise.all([
-      user.findByIdAndUpdate(user._id, {
+      User.findByIdAndUpdate(user._id, {
         $inc: { amount: -depositRecord.amount },
       }),
-      user.findByIdAndUpdate(depositUser._id, {
+      User.findByIdAndUpdate(depositUser._id, {
         $inc: { amount: depositRecord.amount },
       }),
     ]);
