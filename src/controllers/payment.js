@@ -7,7 +7,7 @@ import { WithdrawHistory } from "../models/withdrawHistory.js";
 import { calculateTotalExposure } from "../utils/helper.js";
 import { ErrorHandler } from "../utils/utility-class.js";
 
-export const createPaymentIntent = TryCatch(async (req, res, next) => {
+const createPaymentIntent = TryCatch(async (req, res, next) => {
   const { amount } = req.body;
   if (!amount || isNaN(amount) || amount <= 0)
     return next(new ErrorHandler("Please enter a valid amount", 400));
@@ -345,6 +345,7 @@ const changeWithdrawStatus = TryCatch(async (req, res, next) => {
 export {
   changeDepositStatus,
   changeWithdrawStatus,
+  createPaymentIntent,
   depositHistory,
   depositRequest,
   getUserDepositHistory,
