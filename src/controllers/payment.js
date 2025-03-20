@@ -189,7 +189,32 @@ const getUserWithdrawlHistory = TryCatch(async (req, res, next) => {
 });
 
 const withdrawalRequest = TryCatch(async (req, res, next) => {
-  const { amount } = req.body;
+  const {
+    amount,
+    accountNumber,
+    ifscCode,
+    accountHolderName,
+    bankName,
+    contact,
+  } = req.body;
+
+  if (!amount || isNaN(amount) || amount <= 100) {
+    return next(
+      new ErrorHandler("Invalid amount. Enter a number greater than 100.", 400)
+    );
+  }
+
+  if (
+    !accountNumber ||
+    !ifscCode ||
+    !accountHolderName ||
+    !bankName ||
+    !contact
+  ) {
+    return next(
+      new ErrorHandler("All bank details are required for withdrawal.", 400)
+    );
+  }
 
   const requester = await User.findById(req.user).lean();
   if (!requester) return next(new ErrorHandler("User not found", 404));
@@ -197,17 +222,10 @@ const withdrawalRequest = TryCatch(async (req, res, next) => {
   if (requester.status === "banned")
     return next(new ErrorHandler("You can't perform this action", 400));
 
-  if (!amount || isNaN(amount) || amount <= 100)
-    return next(
-      new ErrorHandler("Invalid amount. Enter a number greater than 100.", 400)
-    );
-
   let parentUser;
-  if (requester.role === "user" || requester.role === "master") {
+  if (requester.role === "user" || requester.role === "master")
     parentUser = requester.parentUser;
-  } else {
-    return next(new ErrorHandler("Unauthorized access", 403));
-  }
+  else return next(new ErrorHandler("Unauthorized access", 403));
 
   if (!parentUser) return next(new ErrorHandler("Parent user not found", 404));
 
@@ -217,9 +235,14 @@ const withdrawalRequest = TryCatch(async (req, res, next) => {
 
   const withdrawHistory = await WithdrawHistory.create({
     userId: requester._id,
-    userName: requester.name,
+    userName: requester.name.trim(),
     parentUser,
     amount,
+    accountNumber: accountNumber.trim(),
+    ifscCode: ifscCode.trim(),
+    accountHolderName: accountHolderName.trim(),
+    bankName: bankName.trim(),
+    contact: contact.trim(),
   });
 
   return res.status(201).json({
@@ -267,9 +290,10 @@ const changeWithdrawStatus = TryCatch(async (req, res, next) => {
   }
 
   if (status === "approved") {
-    if (withdrawUser.amount < withdrawRecord.amount) {
+    const exposure = await calculateTotalExposure(withdrawUser._id);
+    if (withdrawUser.amount - exposure < withdrawRecord.amount)
       return next(new ErrorHandler("Insufficient funds", 400));
-    }
+
     withdrawUser.amount -= withdrawRecord.amount;
     await withdrawUser.save();
   }
@@ -285,12 +309,12 @@ const changeWithdrawStatus = TryCatch(async (req, res, next) => {
 });
 
 export {
+  changeDepositStatus,
   changeWithdrawStatus,
   depositHistory,
+  depositRequest,
   getUserDepositHistory,
   getUserWithdrawlHistory,
   withdrawalHistory,
   withdrawalRequest,
-  depositRequest,
-  changeDepositStatus,
 };

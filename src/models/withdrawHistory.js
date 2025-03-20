@@ -16,6 +16,28 @@ const schema = new Schema(
       type: String,
       required: true,
     },
+    accountNumber: {
+      type: String,
+      required: true,
+      unique: true,
+    },
+    ifscCode: {
+      type: String,
+      required: true,
+    },
+    accountHolderName: {
+      type: String,
+      required: true,
+    },
+    bankName: {
+      type: String,
+      required: true,
+    },
+    contact: {
+      type: Number,
+      required: true,
+      match: [/^\d{10}$/, "Invalid contact number"],
+    },
     amount: {
       type: Number,
       required: true,
