@@ -58,9 +58,12 @@ const newUser = TryCatch(async (req, res, next) => {
 
   await PaymentHistory.create({
     userId: user._id,
+    parentUser: parentUser._id,
     userName: user.name,
     currency,
     amount,
+    referenceNumber: "User is created",
+    status: "approved",
   });
 
   sendToken(res, user, 201, `${role} created successfully`);
