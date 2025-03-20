@@ -1,3 +1,4 @@
+import QRCode from "qrcode";
 import { TryCatch } from "../middlewares/error.js";
 import { PaymentHistory } from "../models/paymentHistory.js";
 import { UpiId } from "../models/upiId.js";
@@ -8,26 +9,28 @@ import { ErrorHandler } from "../utils/utility-class.js";
 
 export const createPaymentIntent = TryCatch(async (req, res, next) => {
   const { amount } = req.body;
-  if (!amount) return next(new ErrorHandler("Please enter amount", 400));
-  if (amount < 0)
-    return next(new ErrorHandler("Please enter valid amount", 400));
+  if (!amount || isNaN(amount) || amount <= 0)
+    return next(new ErrorHandler("Please enter a valid amount", 400));
+
+  const user = await User.findById(req.user).lean();
+  if (!user) return next(new ErrorHandler("User not found", 404));
 
   const upiIds = await UpiId.find();
+  if (upiIds.length === 0)
+    return next(new ErrorHandler("No UPI ID available", 400));
   const randomIndex = Math.floor(Math.random() * upiIds.length);
-  const upiId = upiIds[randomIndex];
+  const upiId = upiIds[randomIndex].upiId;
   const receiverName = "Shaktiex";
-  const currency = "INR";
+  const currency = user.currency;
 
-  const upiLink = `upi://pay?pa=${upiId.upiId}&pn=${receiverName}&am=${Number(
-    amount
-  )}&cu=${currency}`;
+  const upiLink = `upi://pay?pa=${upiId}&pn=${receiverName}&am=${amount}&cu=${currency}`;
 
   QRCode.toDataURL(upiLink, (err, url) => {
     if (err) return next(new ErrorHandler("Error in generating QR Code", 400));
 
     return res.status(201).json({
       success: true,
-      upiId: upiId.upiId,
+      upiId,
       amount,
       url,
     });

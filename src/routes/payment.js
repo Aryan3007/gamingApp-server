@@ -2,6 +2,7 @@ import express from "express";
 import {
   changeDepositStatus,
   changeWithdrawStatus,
+  createPaymentIntent,
   depositHistory,
   depositRequest,
   getUserDepositHistory,
@@ -18,6 +19,8 @@ import {
 const app = express.Router();
 
 app.use(isAuthenticated);
+
+app.post("/create", createPaymentIntent);
 
 app.get("/user-deposit-history", getUserDepositHistory);
 
