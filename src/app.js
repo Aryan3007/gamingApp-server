@@ -16,8 +16,8 @@ import { getAllMarkets, settleBets } from "./utils/service.js";
 import betRoute from "./routes/bet.js";
 import miscRoute from "./routes/misc.js";
 import paymentRoute from "./routes/payment.js";
+import paymentDetailsRoute from "./routes/paymentDetails.js";
 import scoreRoute from "./routes/score.js";
-import upiIdRoute from "./routes/upiId.js";
 import userRoute from "./routes/user.js";
 
 config({
@@ -55,7 +55,7 @@ app.use(cors(corsOption));
 app.use("/api/v1/user", userRoute);
 app.use("/api/v1/payment", paymentRoute);
 app.use("/api/v1/bet", betRoute);
-app.use("/api/v1/upi", upiIdRoute);
+app.use("/api/v1/payment-details", paymentDetailsRoute);
 app.use("/api/v1/scores", scoreRoute);
 app.use("/api/v1/misc", miscRoute);
 app.get("/api/v1/getMarkets", getAllMarkets);
