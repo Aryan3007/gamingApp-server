@@ -4,8 +4,8 @@ import { TryCatch } from "../middlewares/error.js";
 import { Bet } from "../models/bet.js";
 import { Margin } from "../models/margin.js";
 import { User } from "../models/user.js";
-import { ErrorHandler } from "./utility-class.js";
 import { calculateProfitAndLoss } from "./helper.js";
+import { ErrorHandler } from "./utility-class.js";
 
 const chunkArray = (array, size) => {
   return Array.from({ length: Math.ceil(array.length / size) }, (_, index) =>
@@ -183,48 +183,12 @@ const settleBets = async (eventId) => {
       let isMarketResultAvailable = false;
 
       if (category === "match odds" && matchOddsResults.has(marketId)) {
-        // const margin = marginMap.get(`${userId}-${marketId}`);
-        // if (!margin) {
-        //   console.log(
-        //     `No margin found! event: ${eventId}, market: ${marketId} user: ${userId}`
-        //   );
-        //   return;
-        // }
-
-        // const updateAmount = Math.abs(Math.min(margin.profit, margin.loss, 0));
-        // const betKey = `${userId}-${marketId}`;
-        // if (!processedBets.has(betKey)) {
-        //   processedBets.add(betKey);
-        //   userUpdates.set(
-        //     userId,
-        //     (userUpdates.get(userId) || 0) + updateAmount
-        //   );
-        // }
-
         isWinningBet =
           (matchOddsResults.get(marketId) === selectionId && type === "back") ||
           (matchOddsResults.get(marketId) !== selectionId && type === "lay");
 
         isMarketResultAvailable = true;
       } else if (category === "bookmaker" && bookmakerResults.has(marketId)) {
-        // const margin = marginMap.get(`${userId}-${marketId}`);
-        // if (!margin) {
-        //   console.log(
-        //     `No margin found! event: ${eventId}, market: ${marketId} user: ${userId}`
-        //   );
-        //   return;
-        // }
-
-        // const updateAmount = Math.abs(Math.min(margin.profit, margin.loss, 0));
-        // const betKey = `${userId}-${marketId}`;
-        // if (!processedBets.has(betKey)) {
-        //   processedBets.add(betKey);
-        //   userUpdates.set(
-        //     userId,
-        //     (userUpdates.get(userId) || 0) + updateAmount
-        //   );
-        // }
-
         isWinningBet =
           (bookmakerResults.get(marketId) === selectionId && type === "back") ||
           (bookmakerResults.get(marketId) !== selectionId && type === "lay");
