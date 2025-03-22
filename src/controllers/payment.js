@@ -93,9 +93,9 @@ const depositRequest = TryCatch(async (req, res, next) => {
   if (!amount || !referenceNumber)
     return next(new ErrorHandler("Please provide all fields", 400));
 
-  if (isNaN(amount) || amount <= 100)
+  if (isNaN(amount) || amount < 100)
     return next(
-      new ErrorHandler("Invalid amount. Enter a number greater than 100.", 400)
+      new ErrorHandler("Invalid amount. Amount should be at least 100.", 400)
     );
 
   let parentUser;
@@ -232,9 +232,9 @@ const withdrawalRequest = TryCatch(async (req, res, next) => {
     contact,
   } = req.body;
 
-  if (!amount || isNaN(amount) || amount <= 100) {
+  if (!amount || isNaN(amount) || amount < 300) {
     return next(
-      new ErrorHandler("Invalid amount. Enter a number greater than 100.", 400)
+      new ErrorHandler("Invalid amount. Amount should be at least 300.", 400)
     );
   }
 
@@ -266,6 +266,9 @@ const withdrawalRequest = TryCatch(async (req, res, next) => {
   const exposure = await calculateTotalExposure(requester._id);
   if (requester.amount - exposure < amount)
     return next(new ErrorHandler("Insufficient balance for withdrawal", 400));
+
+  requester.amount -= amount;
+  await requester.save();
 
   const withdrawHistory = await WithdrawHistory.create({
     userId: requester._id,
@@ -307,13 +310,7 @@ const changeWithdrawStatus = TryCatch(async (req, res, next) => {
   const withdrawUser = await User.findById(withdrawRecord.userId);
   if (!withdrawUser) return next(new ErrorHandler("Requester not found", 404));
 
-  if (user.role === "master") {
-    if (withdrawUser.parentUser.toString() !== user._id.toString()) {
-      return next(
-        new ErrorHandler("Unauthorized to approve this withdrawal", 403)
-      );
-    }
-  } else if (user.role === "super_admin") {
+  if (user.role === "master" || user.role === "super_admin") {
     if (withdrawUser.parentUser.toString() !== user._id.toString()) {
       return next(
         new ErrorHandler("Unauthorized to approve this withdrawal", 403)
@@ -324,12 +321,15 @@ const changeWithdrawStatus = TryCatch(async (req, res, next) => {
   }
 
   if (status === "approved") {
-    const exposure = await calculateTotalExposure(withdrawUser._id);
-    if (withdrawUser.amount - exposure < withdrawRecord.amount)
-      return next(new ErrorHandler("Insufficient funds", 400));
-
-    withdrawUser.amount -= withdrawRecord.amount;
-    await withdrawUser.save();
+    if (user.role === "master") {
+      await User.findByIdAndUpdate(user._id, {
+        $inc: { amount: withdrawRecord.amount },
+      });
+    }
+  } else {
+    await User.findByIdAndUpdate(withdrawUser._id, {
+      $inc: { amount: withdrawRecord.amount },
+    });
   }
 
   withdrawRecord.status = status;
