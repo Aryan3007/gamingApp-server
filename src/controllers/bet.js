@@ -82,10 +82,6 @@ const placeBet = TryCatch(async (req, res, next) => {
   if (!response.data || !response.data.length)
     return next(new ErrorHandler("Odds Expired", 400));
 
-  const exposure = await calculateTotalExposure(req.user);
-  if (user.amount - exposure < 0)
-    return next(new ErrorHandler("Insufficient funds", 400));
-
   const { profit, loss, error } = calculateProfitAndLoss(
     stake,
     odds,
@@ -94,6 +90,10 @@ const placeBet = TryCatch(async (req, res, next) => {
   );
   if (error) return next(new ErrorHandler(error, 400));
 
+  const exposure = await calculateTotalExposure(req.user);
+  if (user.amount - exposure < Math.abs(loss))
+    return next(new ErrorHandler("Insufficient balance", 400));
+
   if (category !== "fancy") {
     const margin = await Margin.findOne({ userId: user._id, eventId, marketId })
       .sort({ createdAt: -1 })
@@ -101,7 +101,6 @@ const placeBet = TryCatch(async (req, res, next) => {
 
     if (!margin) {
       const exposure = await calculateTotalExposure(user._id);
-      // console.log(exposure, user.amount, loss);
       if (user.amount - exposure < Math.abs(loss))
         return next(new ErrorHandler("Insufficient balance", 400));
 
