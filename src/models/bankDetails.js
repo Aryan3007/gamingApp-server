@@ -2,6 +2,11 @@ import mongoose, { model, Schema } from "mongoose";
 
 const bankSchema = new Schema(
   {
+    userId: {
+      type: String,
+      required: true,
+      ref: "User",
+    },
     accountNumber: {
       type: String,
       required: true,
