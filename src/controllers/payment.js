@@ -12,7 +12,7 @@ const createPaymentIntent = TryCatch(async (req, res, next) => {
   if (!amount || isNaN(amount) || amount <= 0)
     return next(new ErrorHandler("Please enter a valid amount", 400));
 
-  const user = await User.findById(req.user).lean();
+  const user = await User.findById(req.user)
   if (!user) return next(new ErrorHandler("User not found", 404));
 
   const upiIds = await UpiId.find();
@@ -62,7 +62,7 @@ const depositHistory = TryCatch(async (req, res, next) => {
 });
 
 const getUserDepositHistory = TryCatch(async (req, res, next) => {
-  const user = await User.findById(req.user, "_id role").lean();
+  const user = await User.findById(req.user, "_id role")
   if (!user) return next(new ErrorHandler("User not found", 404));
 
   if (user.role === "super_admin")
@@ -84,7 +84,7 @@ const getUserDepositHistory = TryCatch(async (req, res, next) => {
 const depositRequest = TryCatch(async (req, res, next) => {
   const { amount, referenceNumber } = req.body;
 
-  const requester = await User.findById(req.user).lean();
+  const requester = await User.findById(req.user)
   if (!requester) return next(new ErrorHandler("User not found", 404));
 
   if (requester.status === "banned")
@@ -179,7 +179,7 @@ const changeDepositStatus = TryCatch(async (req, res, next) => {
 });
 
 const withdrawalHistory = TryCatch(async (req, res, next) => {
-  const user = await User.findById(req.user, "_id role").lean();
+  const user = await User.findById(req.user, "_id role")
   if (!user) return next(new ErrorHandler("User not found", 404));
 
   const userIds = await User.find({ parentUser: user._id }, "_id").distinct(
@@ -203,7 +203,7 @@ const withdrawalHistory = TryCatch(async (req, res, next) => {
 });
 
 const getUserWithdrawlHistory = TryCatch(async (req, res, next) => {
-  const user = await User.findById(req.user, "_id role").lean();
+  const user = await User.findById(req.user, "_id role")
   if (!user) return next(new ErrorHandler("User not found", 404));
 
   if (user.role === "super_admin")
@@ -250,7 +250,7 @@ const withdrawalRequest = TryCatch(async (req, res, next) => {
     );
   }
 
-  const requester = await User.findById(req.user).lean();
+  const requester = await User.findById(req.user)
   if (!requester) return next(new ErrorHandler("User not found", 404));
 
   if (requester.status === "banned")
