@@ -101,6 +101,7 @@ const placeBet = TryCatch(async (req, res, next) => {
 
     if (!margin) {
       const exposure = await calculateTotalExposure(user._id);
+      // console.log(exposure, user.amount, loss);
       if (user.amount - exposure < Math.abs(loss))
         return next(new ErrorHandler("Insufficient balance", 400));
 
@@ -113,6 +114,8 @@ const placeBet = TryCatch(async (req, res, next) => {
         loss: type === "back" ? loss : profit,
       });
     } else {
+      if (user.amount - exposure < Math.abs(loss))
+        return next(new ErrorHandler("Insufficient balance", 400));
       const { newProfit, newLoss } = calculateNewMargin(
         margin,
         selectionId,
