@@ -8,7 +8,11 @@ import {
   getTotalExposure,
   placeBet,
 } from "../controllers/bet.js";
-import { isAuthenticated, superAdminOnly } from "../middlewares/auth.js";
+import {
+  adminOrSuperAdmin,
+  isAuthenticated,
+  superAdminOnly,
+} from "../middlewares/auth.js";
 
 const app = express.Router();
 
@@ -24,7 +28,7 @@ app.get("/fancy-exposure", getFancyExposure);
 
 app.get("/total-exposure", getTotalExposure);
 
-app.get("/bets", superAdminOnly, getBets);
+app.get("/bets", adminOrSuperAdmin, getBets);
 
 app.post("/change-status", superAdminOnly, changeBetStatus);
 

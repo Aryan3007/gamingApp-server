@@ -231,30 +231,49 @@ const getTotalExposure = TryCatch(async (req, res, next) => {
 const getBets = TryCatch(async (req, res, next) => {
   const { status, userId, selectionId, eventId, category, type } = req.query;
 
+  const user = await User.findById(req.user);
+  if (!user) return next(new ErrorHandler("User not found", 404));
+
   const filter = {};
 
   if (status) {
-    if (!["won", "pending", "lost"].includes(status)) {
+    if (!["won", "pending", "lost"].includes(status))
       return next(new ErrorHandler("Invalid status", 400));
-    }
     filter.status = status;
   }
 
   if (type) {
-    if (!["back", "lay"].includes(type)) {
+    if (!["back", "lay"].includes(type))
       return next(new ErrorHandler("Invalid type", 400));
-    }
     filter.type = type;
   }
 
   if (category) {
-    if (!["match odds", "bookmaker", "fancy"].includes(category)) {
+    if (!["match odds", "bookmaker", "fancy"].includes(category))
       return next(new ErrorHandler("Invalid category", 400));
-    }
     filter.category = category;
   }
 
-  if (userId) filter.userId = userId;
+  if (user.role === "super_admin") {
+    if (userId) filter.userId = userId;
+  } else if (user.role === "master") {
+    if (!userId)
+      return next(
+        new ErrorHandler("Masters can only view specific user bets", 403)
+      );
+
+    const targetUser = await User.findOne({
+      _id: userId,
+      parentUser: user._id,
+    });
+    if (!targetUser)
+      return next(
+        new ErrorHandler("Unauthorized: Cannot access other users' bets", 403)
+      );
+
+    filter.userId = userId;
+  } else return next(new ErrorHandler("Unauthorized", 403));
+
   if (selectionId) filter.selectionId = selectionId;
   if (eventId) filter.eventId = eventId;
 
