@@ -4,6 +4,7 @@ import { PaymentHistory } from "../models/paymentHistory.js";
 import { UpiId } from "../models/upiId.js";
 import { User } from "../models/user.js";
 import { WithdrawHistory } from "../models/withdrawHistory.js";
+import { uploadFileToCloudinary } from "../utils/features.js";
 import { calculateTotalExposure } from "../utils/helper.js";
 import { ErrorHandler } from "../utils/utility-class.js";
 
@@ -12,10 +13,10 @@ const createPaymentIntent = TryCatch(async (req, res, next) => {
   if (!amount || isNaN(amount) || amount <= 0)
     return next(new ErrorHandler("Please enter a valid amount", 400));
 
-  const user = await User.findById(req.user)
+  const user = await User.findById(req.user);
   if (!user) return next(new ErrorHandler("User not found", 404));
 
-  const upiIds = await UpiId.find();
+  const upiIds = await UpiId.find({ userId: user.parentUser });
   if (upiIds.length === 0)
     return next(new ErrorHandler("No UPI ID available", 400));
   const randomIndex = Math.floor(Math.random() * upiIds.length);
@@ -62,7 +63,7 @@ const depositHistory = TryCatch(async (req, res, next) => {
 });
 
 const getUserDepositHistory = TryCatch(async (req, res, next) => {
-  const user = await User.findById(req.user, "_id role")
+  const user = await User.findById(req.user, "_id role");
   if (!user) return next(new ErrorHandler("User not found", 404));
 
   if (user.role === "super_admin")
@@ -83,36 +84,56 @@ const getUserDepositHistory = TryCatch(async (req, res, next) => {
 
 const depositRequest = TryCatch(async (req, res, next) => {
   const { amount, referenceNumber } = req.body;
+  const image = req.file;
 
-  const requester = await User.findById(req.user)
+  const requester = await User.findById(req.user);
   if (!requester) return next(new ErrorHandler("User not found", 404));
-
   if (requester.status === "banned")
     return next(new ErrorHandler("You can't perform this action", 400));
 
-  if (!amount || !referenceNumber)
-    return next(new ErrorHandler("Please provide all fields", 400));
+  if (requester.role !== "user")
+    return next(new ErrorHandler("Unauthorized access", 403));
 
-  if (isNaN(amount) || amount < 100)
+  if (!amount || isNaN(amount) || amount < 100)
+    return next(new ErrorHandler("Invalid amount. Minimum is 100.", 400));
+
+  if (!referenceNumber?.trim() || !image)
     return next(
-      new ErrorHandler("Invalid amount. Amount should be at least 100.", 400)
+      new ErrorHandler(
+        "Amount, reference number, and screenshot are required",
+        400
+      )
     );
 
-  let parentUser;
-  if (requester.role === "user") parentUser = requester.parentUser;
-  else {
-    return next(new ErrorHandler("Unauthorized access", 403));
+  const allowedFormats = ["image/png", "image/jpeg", "image/jpg", "image/webp"];
+  if (!allowedFormats.includes(image.mimetype)) {
+    return next(
+      new ErrorHandler(
+        "Invalid file type. Only images (PNG, JPEG, JPG, WEBP) are allowed.",
+        400
+      )
+    );
   }
 
-  if (!parentUser) return next(new ErrorHandler("Parent user not found", 404));
+  let screenShot;
+  try {
+    const { public_id, url } = await uploadFileToCloudinary(image);
+    if (!public_id || !url) {
+      throw new Error("Invalid Cloudinary response");
+    }
+    screenShot = { public_id, url };
+  } catch (error) {
+    return next(new ErrorHandler("Failed to upload screenshot", 500));
+  }
 
   const paymentRequest = await PaymentHistory.create({
     userId: requester._id,
-    parentUser,
+    parentUser: requester.parentUser,
     userName: requester.name,
     currency: requester.currency,
     amount,
     referenceNumber,
+    screenShot,
   });
 
   return res.status(201).json({
@@ -179,7 +200,7 @@ const changeDepositStatus = TryCatch(async (req, res, next) => {
 });
 
 const withdrawalHistory = TryCatch(async (req, res, next) => {
-  const user = await User.findById(req.user, "_id role")
+  const user = await User.findById(req.user, "_id role");
   if (!user) return next(new ErrorHandler("User not found", 404));
 
   const userIds = await User.find({ parentUser: user._id }, "_id").distinct(
@@ -203,7 +224,7 @@ const withdrawalHistory = TryCatch(async (req, res, next) => {
 });
 
 const getUserWithdrawlHistory = TryCatch(async (req, res, next) => {
-  const user = await User.findById(req.user, "_id role")
+  const user = await User.findById(req.user, "_id role");
   if (!user) return next(new ErrorHandler("User not found", 404));
 
   if (user.role === "super_admin")
@@ -250,7 +271,7 @@ const withdrawalRequest = TryCatch(async (req, res, next) => {
     );
   }
 
-  const requester = await User.findById(req.user)
+  const requester = await User.findById(req.user);
   if (!requester) return next(new ErrorHandler("User not found", 404));
 
   if (requester.status === "banned")
@@ -351,5 +372,6 @@ export {
   getUserDepositHistory,
   getUserWithdrawlHistory,
   withdrawalHistory,
-  withdrawalRequest,
+  withdrawalRequest
 };
+

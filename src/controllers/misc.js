@@ -10,19 +10,29 @@ const uploadImage = TryCatch(async (req, res, next) => {
   const { title } = req.body;
   const file = req.file;
 
-  if (!title) return next(new ErrorHandler("Please Enter Title", 400));
-  if (!file) return next(new ErrorHandler("Please Upload Image", 400));
+  if (!title?.trim()) return next(new ErrorHandler("Please Enter Title", 400));
+  if (!file) return next(new ErrorHandler("Please Upload an Image", 400));
 
-  const result = await uploadFileToCloudinary(file);
-
-  if (!result || !result.public_id || !result.url) {
-    return next(new ErrorHandler("Image upload failed", 500));
+  const allowedFormats = ["image/png", "image/jpeg", "image/jpg", "image/webp"];
+  if (!allowedFormats.includes(file.mimetype)) {
+    return next(
+      new ErrorHandler(
+        "Invalid file type. Only images (PNG, JPEG, JPG, WEBP) are allowed.",
+        400
+      )
+    );
   }
 
-  const image = {
-    public_id: result.public_id,
-    url: result.url,
-  };
+  let image;
+  try {
+    const { public_id, url } = await uploadFileToCloudinary(file);
+    if (!public_id || !url) {
+      throw new Error("Invalid Cloudinary response");
+    }
+    image = { public_id, url };
+  } catch (error) {
+    return next(new ErrorHandler("Image upload failed. Try again later.", 500));
+  }
 
   const carousel = await Carousel.create({
     title,

@@ -28,6 +28,16 @@ const schema = new Schema(
       type: String,
       default: null,
     },
+    screenShot: {
+      public_id: {
+        type: String,
+        default: null,
+      },
+      url: {
+        type: String,
+        default: null,
+      },
+    },
     status: {
       type: String,
       enum: ["approved", "rejected", "pending"],
