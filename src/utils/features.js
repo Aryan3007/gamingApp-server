@@ -53,8 +53,13 @@ const uploadFileToCloudinary = async (file) => {
 };
 
 const dltFileFromCloudinary = async (public_id) => {
+  if (!public_id) return { success: false, message: "Public ID is required" };
+
   try {
-    const result = await cloudinary.uploader.destroy(public_id);
+    const result = await cloudinary.uploader.destroy(public_id, {
+      invalidate: true,
+      resource_type: "image",
+    });
 
     if (result.result === "ok") {
       return {
@@ -69,7 +74,11 @@ const dltFileFromCloudinary = async (public_id) => {
       cloudinaryResponse: result,
     };
   } catch (error) {
-    throw new Error("Error deleting file from Cloudinary: " + error.message);
+    return {
+      success: false,
+      message: "Error deleting file from Cloudinary",
+      error: error.message,
+    };
   }
 };
 

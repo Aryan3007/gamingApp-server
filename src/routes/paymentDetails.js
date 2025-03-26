@@ -1,10 +1,13 @@
 import express from "express";
 import {
   addBankDetails,
+  addQRCode,
   addUpiId,
   deleteBankDetails,
+  deleteQRCode,
   deleteUpiId,
   getBankDetails,
+  getQRCode,
   getUpiId,
 } from "../controllers/paymentDetails.js";
 import { adminOnly, isAuthenticated } from "../middlewares/auth.js";
@@ -24,5 +27,11 @@ app
   .get(getBankDetails)
   .post(adminOnly, addBankDetails)
   .delete(adminOnly, deleteBankDetails);
+
+app
+  .route("/qrcode")
+  .get(getQRCode)
+  .post(adminOnly, addQRCode)
+  .delete(adminOnly, deleteQRCode);
 
 export default app;

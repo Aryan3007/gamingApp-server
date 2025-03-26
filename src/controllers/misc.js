@@ -61,7 +61,6 @@ const dltImage = TryCatch(async (req, res, next) => {
   const imageData = await Carousel.findById(id);
   if (!imageData) return next(new ErrorHandler("Image not found", 404));
 
-  // Delete from Cloudinary
   const cloudinaryResponse = await dltFileFromCloudinary(
     imageData.image.public_id
   );
@@ -72,7 +71,6 @@ const dltImage = TryCatch(async (req, res, next) => {
     );
   }
 
-  // Delete from Database
   await Carousel.findByIdAndDelete(id);
 
   return res.status(200).json({
