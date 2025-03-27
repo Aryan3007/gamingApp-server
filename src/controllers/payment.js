@@ -109,7 +109,7 @@ const depositRequest = TryCatch(async (req, res, next) => {
   if (!allowedFormats.includes(image.mimetype)) {
     return next(
       new ErrorHandler(
-        "Invalid file type. Only images (PNG, JPEG, JPG, WEBP) are allowed.",
+        "Invalid image type. Only images (PNG, JPEG, JPG, WEBP) are allowed.",
         400
       )
     );
@@ -372,6 +372,5 @@ export {
   getUserDepositHistory,
   getUserWithdrawlHistory,
   withdrawalHistory,
-  withdrawalRequest
+  withdrawalRequest,
 };
-

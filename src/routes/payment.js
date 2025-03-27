@@ -15,6 +15,7 @@ import {
   adminOrSuperAdmin,
   isAuthenticated,
 } from "../middlewares/auth.js";
+import { singleImage } from "../middlewares/multer.js";
 
 const app = express.Router();
 
@@ -26,7 +27,7 @@ app.get("/user-deposit-history", getUserDepositHistory);
 
 app.get("/deposit-history", adminOrSuperAdmin, depositHistory);
 
-app.post("/deposit-request", depositRequest);
+app.post("/deposit-request", singleImage, depositRequest);
 
 app.post("/deposit-status", adminOnly, changeDepositStatus);
 

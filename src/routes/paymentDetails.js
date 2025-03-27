@@ -11,6 +11,7 @@ import {
   getUpiId,
 } from "../controllers/paymentDetails.js";
 import { adminOnly, isAuthenticated } from "../middlewares/auth.js";
+import { singleImage } from "../middlewares/multer.js";
 
 const app = express.Router();
 
@@ -31,7 +32,7 @@ app
 app
   .route("/qrcode")
   .get(getQRCode)
-  .post(adminOnly, addQRCode)
+  .post(adminOnly, singleImage, addQRCode)
   .delete(adminOnly, deleteQRCode);
 
 export default app;

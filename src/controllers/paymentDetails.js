@@ -138,16 +138,16 @@ const deleteBankDetails = TryCatch(async (req, res, next) => {
 
 const addQRCode = TryCatch(async (req, res, next) => {
   const { title } = req.body;
-  const file = req.file;
+  const image = req.file;
 
   if (!title?.trim()) return next(new ErrorHandler("Please Enter Title", 400));
-  if (!file) return next(new ErrorHandler("Please Upload an Image", 400));
+  if (!image) return next(new ErrorHandler("Please Upload an Image", 400));
 
   const allowedFormats = ["image/png", "image/jpeg", "image/jpg", "image/webp"];
-  if (!allowedFormats.includes(file.mimetype)) {
+  if (!allowedFormats.includes(image.mimetype)) {
     return next(
       new ErrorHandler(
-        "Invalid file type. Only images (PNG, JPEG, JPG, WEBP) are allowed.",
+        "Invalid image type. Only images (PNG, JPEG, JPG, WEBP) are allowed.",
         400
       )
     );
@@ -158,7 +158,7 @@ const addQRCode = TryCatch(async (req, res, next) => {
 
   let qrCode;
   try {
-    const { public_id, url } = await uploadFileToCloudinary(file);
+    const { public_id, url } = await uploadFileToCloudinary(image);
     if (!public_id || !url) {
       throw new Error("Invalid Cloudinary response");
     }
