@@ -3,7 +3,10 @@ import { BankDetails } from "../models/bankDetails.js";
 import { QRCode } from "../models/qrCode.js";
 import { UpiId } from "../models/upiId.js";
 import { User } from "../models/user.js";
-import { dltFileFromCloudinary } from "../utils/features.js";
+import {
+  dltFileFromCloudinary,
+  uploadFileToCloudinary,
+} from "../utils/features.js";
 import { ErrorHandler } from "../utils/utility-class.js";
 
 const addUpiId = TryCatch(async (req, res, next) => {
