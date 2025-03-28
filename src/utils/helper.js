@@ -1,6 +1,5 @@
 import { Bet } from "../models/bet.js";
 import { Margin } from "../models/margin.js";
-import { ErrorHandler } from "../utils/utility-class.js";
 
 const calculateProfitAndLoss = (stake, odds, type, category) => {
   let profit = 0;
@@ -47,38 +46,6 @@ const calculateNewMargin = (margin, selectionId, type, profit, loss) => {
     newProfit: margin.profit + (isSameSelection === isBack ? profit : loss),
     newLoss: margin.loss + (isSameSelection === isBack ? loss : profit),
   };
-};
-
-const validateOdds = (type, odds, fancyNumber, runner, next) => {
-  if (type === "back") {
-    const back = runner.back;
-    if (!back || !Array.isArray(back) || back.length < 3)
-      return next(new ErrorHandler("Invalid odds data", 400));
-
-    if (fancyNumber !== null) {
-      if (back[0].price !== fancyNumber || back[0].size !== odds) {
-        return next(new ErrorHandler("Odds Changed", 400));
-      }
-    } else {
-      if (![back[0].price, back[1]?.price, back[2]?.price].includes(odds)) {
-        return next(new ErrorHandler("Odds Changed", 400));
-      }
-    }
-  } else {
-    const lay = runner.lay;
-    if (!lay || !Array.isArray(lay) || lay.length < 3)
-      return next(new ErrorHandler("Invalid odds data", 400));
-
-    if (fancyNumber !== null) {
-      if (lay[0].price !== fancyNumber || lay[0].size !== odds) {
-        return next(new ErrorHandler("Odds Changed", 400));
-      }
-    } else {
-      if (![lay[0].price, lay[1]?.price, lay[2]?.price].includes(odds)) {
-        return next(new ErrorHandler("Odds Changed", 400));
-      }
-    }
-  }
 };
 
 const calculateFancyExposure = async (userId, eventId) => {
@@ -216,5 +183,4 @@ export {
   calculateProfitAndLoss,
   calculateTotalExposure,
   getFormattedTimestamp,
-  validateOdds,
 };

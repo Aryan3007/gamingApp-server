@@ -9,7 +9,6 @@ import {
   calculateNewMargin,
   calculateProfitAndLoss,
   calculateTotalExposure,
-  validateOdds,
 } from "../utils/helper.js";
 import { ErrorHandler } from "../utils/utility-class.js";
 
@@ -89,8 +88,42 @@ const placeBet = TryCatch(async (req, res, next) => {
   if (category === "match odds" || category === "bookmaker") {
     const runner = data.runners.find((r) => r.selectionId === selectionId);
     if (!runner) return next(new ErrorHandler("Selection ID not found", 400));
-    validateOdds(type, odds, null, runner, next);
-  } else validateOdds(type, odds, fancyNumber, data, next);
+    if (type === "back") {
+      const back = runner.back;
+      if (!back || !Array.isArray(back) || back.length < 3)
+        return next(new ErrorHandler("Invalid odds data", 400));
+
+      if (![back[0].price, back[1]?.price, back[2]?.price].includes(odds)) {
+        return next(new ErrorHandler("Odds Changed", 400));
+      }
+    } else {
+      const lay = runner.lay;
+      if (!lay || !Array.isArray(lay) || lay.length < 3)
+        return next(new ErrorHandler("Invalid odds data", 400));
+
+      if (![lay[0].price, lay[1]?.price, lay[2]?.price].includes(odds)) {
+        return next(new ErrorHandler("Odds Changed", 400));
+      }
+    }
+  } else {
+    if (type === "back") {
+      const back = data.back;
+      if (!back || !Array.isArray(back) || back.length < 3)
+        return next(new ErrorHandler("Invalid odds data", 400));
+
+      if (back[0].price !== fancyNumber || back[0].size !== odds) {
+        return next(new ErrorHandler("Odds Changed", 400));
+      }
+    } else {
+      const lay = data.lay;
+      if (!lay || !Array.isArray(lay) || lay.length < 3)
+        return next(new ErrorHandler("Invalid odds data", 400));
+
+      if (lay[0].price !== fancyNumber || lay[0].size !== odds) {
+        return next(new ErrorHandler("Odds Changed", 400));
+      }
+    }
+  }
 
   const { profit, loss, error } = calculateProfitAndLoss(
     stake,
