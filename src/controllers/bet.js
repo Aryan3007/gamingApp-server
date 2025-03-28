@@ -9,6 +9,7 @@ import {
   calculateNewMargin,
   calculateProfitAndLoss,
   calculateTotalExposure,
+  validateOdds,
 } from "../utils/helper.js";
 import { ErrorHandler } from "../utils/utility-class.js";
 
@@ -71,16 +72,25 @@ const placeBet = TryCatch(async (req, res, next) => {
       );
   }
 
-  let endpoint;
-  if (category === "bookmaker")
-    endpoint = `${API_BASE_URL}/RBookmaker?Mids=${marketId}`;
-  else if (category === "match odds")
-    endpoint = `${API_BASE_URL}/RMatchOdds?Mids=${marketId}`;
-  else endpoint = `${API_BASE_URL}/RFancy?Mids=${marketId}`;
+  const endpoints = {
+    bookmaker: `${API_BASE_URL}/RBookmaker?Mids=${marketId}`,
+    "match odds": `${API_BASE_URL}/RMatchOdds?Mids=${marketId}`,
+    fancy: `${API_BASE_URL}/RFancy?Mids=${marketId}`,
+  };
 
+  const endpoint = endpoints[category] || endpoints.fancy;
   const response = await axios.get(endpoint);
+
   if (!response.data || !response.data.length)
     return next(new ErrorHandler("Odds Expired", 400));
+
+  const data = response.data[0];
+
+  if (category === "match odds" || category === "bookmaker") {
+    const runner = data.runners.find((r) => r.selectionId === selectionId);
+    if (!runner) return next(new ErrorHandler("Selection ID not found", 400));
+    validateOdds(type, odds, null, runner, next);
+  } else validateOdds(type, odds, fancyNumber, data, next);
 
   const { profit, loss, error } = calculateProfitAndLoss(
     stake,
