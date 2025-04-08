@@ -25,6 +25,7 @@ const placeBet = TryCatch(async (req, res, next) => {
     eventId,
     match,
     marketId,
+    matchOddsMarketId,
     selection,
     selectionId,
     fancyNumber,
@@ -85,7 +86,7 @@ const placeBet = TryCatch(async (req, res, next) => {
 
   const data = response.data[0];
 
-  if (category === "match odds" || category === "bookmaker") {
+  if (category === "match odds") {
     const runner = data.runners.find((r) => r.selectionId === selectionId);
     if (!runner) return next(new ErrorHandler("Selection ID not found", 400));
     if (type === "back") {
@@ -102,6 +103,60 @@ const placeBet = TryCatch(async (req, res, next) => {
         return next(new ErrorHandler("Invalid odds data", 400));
 
       if (![lay[0].price, lay[1]?.price, lay[2]?.price].includes(odds)) {
+        return next(new ErrorHandler("Odds Changed", 400));
+      }
+    }
+  } else if (category === "bookmaker") {
+    const runner = data.runners.find((r) => r.selectionId === selectionId);
+    if (!runner) return next(new ErrorHandler("Selection ID not found", 400));
+
+    const [matchOddsRes, bookmakerRes] = await Promise.all([
+      axios.get(`${API_BASE_URL}/RMatchOdds?Mids=${matchOddsMarketId}`),
+      axios.get(`${API_BASE_URL}/GetBookMaker?eventid=${eventId}`),
+    ]);
+    const matchOddsData = matchOddsRes.data[0];
+
+    const bookmakerData = bookmakerRes.data || [];
+    let val1 = 0;
+    let val2 = 0;
+    bookmakerData.map((b) => {
+      const extractZeroPercent = (str) => {
+        const match = str.match(/0%\b/i);
+        return match ? match[0] : null;
+      };
+
+      const zeroPercent = extractZeroPercent(b.market.name);
+
+      if (
+        b.market.status.toLowerCase().trim() === "open" &&
+        zeroPercent === "0%" &&
+        data.runners
+      ) {
+        val1 = Math.floor(matchOddsData.runners[0][type][0].price * 100) - 100;
+        val2 = Math.floor(matchOddsData.runners[1][type][0].price * 100) - 100;
+      }
+    });
+
+    if (type === "back") {
+      const back = runner.back;
+      if (!back || !Array.isArray(back) || back.length < 3)
+        return next(new ErrorHandler("Invalid odds data", 400));
+
+      if (
+        ![back[0].price, back[1]?.price, back[2]?.price, val1, val2].includes(
+          odds
+        )
+      ) {
+        return next(new ErrorHandler("Odds Changed", 400));
+      }
+    } else {
+      const lay = runner.lay;
+      if (!lay || !Array.isArray(lay) || lay.length < 3)
+        return next(new ErrorHandler("Invalid odds data", 400));
+
+      if (
+        ![lay[0].price, lay[1]?.price, lay[2]?.price, val1, val2].includes(odds)
+      ) {
         return next(new ErrorHandler("Odds Changed", 400));
       }
     }
@@ -133,13 +188,13 @@ const placeBet = TryCatch(async (req, res, next) => {
   );
   if (error) return next(new ErrorHandler(error, 400));
 
+  const exposure = await calculateTotalExposure(user._id);
   if (category !== "fancy") {
     const margin = await Margin.findOne({ userId: user._id, eventId, marketId })
       .sort({ createdAt: -1 })
       .lean();
 
     if (!margin) {
-      const exposure = await calculateTotalExposure(user._id);
       if (user.amount - exposure < Math.abs(loss))
         return next(new ErrorHandler("Insufficient balance", 400));
 
@@ -160,7 +215,12 @@ const placeBet = TryCatch(async (req, res, next) => {
         loss
       );
 
-      if (user.amount - exposure < Math.abs(Math.min(newProfit, newLoss, 0)))
+      if (
+        user.amount -
+          exposure +
+          Math.abs(Math.min(margin.profit, margin.loss, 0)) <
+        Math.abs(Math.min(newProfit, newLoss, 0))
+      )
         return next(new ErrorHandler("Insufficient balance", 400));
 
       await Margin.create({
@@ -172,6 +232,9 @@ const placeBet = TryCatch(async (req, res, next) => {
         loss: margin.selectionId === selectionId ? newLoss : newProfit,
       });
     }
+  } else {
+    if (user.amount - exposure < Math.abs(loss))
+      return next(new ErrorHandler("Insufficient balance", 400));
   }
 
   const newBet = await Bet.create({
