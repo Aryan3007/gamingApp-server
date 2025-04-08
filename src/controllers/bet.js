@@ -107,9 +107,6 @@ const placeBet = TryCatch(async (req, res, next) => {
       }
     }
   } else if (category === "bookmaker") {
-    const runner = data.runners.find((r) => r.selectionId === selectionId);
-    if (!runner) return next(new ErrorHandler("Selection ID not found", 400));
-
     const [matchOddsRes, bookmakerRes] = await Promise.all([
       axios.get(`${API_BASE_URL}/RMatchOdds?Mids=${matchOddsMarketId}`),
       axios.get(`${API_BASE_URL}/GetBookMaker?eventid=${eventId}`),
@@ -136,6 +133,9 @@ const placeBet = TryCatch(async (req, res, next) => {
         val2 = Math.floor(matchOddsData.runners[1][type][0].price * 100) - 100;
       }
     });
+
+    const runner = data?.runners.find((r) => r.selectionId === selectionId);
+    if (!runner) return next(new ErrorHandler("Odds Expired", 400));
 
     if (type === "back") {
       const back = runner.back;
